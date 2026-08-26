@@ -44,7 +44,7 @@ on:
       apply_susfs:
         description: 'Apply SuSFS dynamically during build'
         type: boolean
-        default: true
+        default: false
       apply_bbg:
         description: 'Apply Baseband Guard dynamically during build'
         type: boolean
@@ -93,10 +93,16 @@ jobs:
           if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
             project="${{ github.event.client_payload.project }}"
             branch="${{ github.event.client_payload.branch }}"
-            variant="default"
-            release="true"
-            custom_localversion=""
-            resukisu_setup_arg=""
+            variant="${{ github.event.client_payload.ksu_variant }}"
+            if [ -z "$variant" ]; then
+              variant="default"
+            fi
+            release="${{ github.event.client_payload.do_release }}"
+            if [ -z "$release" ]; then
+              release="true"
+            fi
+            custom_localversion="${{ github.event.client_payload.custom_localversion }}"
+            resukisu_setup_arg="${{ github.event.client_payload.resukisu_setup_arg }}"
             apply_susfs="${{ github.event.client_payload.apply_susfs }}"
             apply_bbg="${{ github.event.client_payload.apply_bbg }}"
             if [ -z "$apply_susfs" ]; then
@@ -140,9 +146,9 @@ jobs:
 
       - name: Download CI Core
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
         run: |
-          gh release download ci-core-latest -p "kokuban_ci_core"
+          gh release download ci-core-latest --repo YuzakiKokuban/Kokuban_Kernel_CI_Center -p "kokuban_ci_core"
           chmod +x kokuban_ci_core
 
       - name: Parse Configuration
@@ -155,7 +161,7 @@ jobs:
           ref: ${{ env.BRANCH_TARGET }}
           path: kernel_source
           submodules: recursive
-          token: ${{ secrets.GH_TOKEN }}
+          token: ${{ secrets.GH_TOKEN || github.token }}
 
       - name: Setup sccache
         uses: hendrikmuhs/ccache-action@v1.2.23
@@ -184,7 +190,7 @@ jobs:
 
       - name: Build and Release
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
           ARGS=(--project ${{ env.PROJECT }} --branch ${{ env.VARIANT }} --do-release ${{ env.DO_RELEASE }})

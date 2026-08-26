@@ -161,7 +161,7 @@
     "boot_finalize": "flash_boot"
   },
   "canoe": {
-    "kernel_string": "Xiaomi17-Kokuban-Kernel",
+    "kernel_string": "Xiaomi17-Moeclub-Kernel",
     "device_check": true,
     "modules": false,
     "systemless": false,

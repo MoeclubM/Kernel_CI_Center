@@ -1240,7 +1240,6 @@ pub fn handle_build(
         .unwrap_or("main");
 
     let is_resukisu = is_resukisu_variant(&branch)
-        || is_resukisu_variant(&variant)
         || proj
             .supported_ksu
             .as_ref()

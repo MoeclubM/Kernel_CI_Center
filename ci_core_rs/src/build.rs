@@ -1239,12 +1239,20 @@ pub fn handle_build(
         .filter(|arg| !arg.is_empty())
         .unwrap_or("main");
 
-    let setup_url = match branch.as_str() {
-        _ if is_resukisu_variant(&branch) => Some((
+    let is_resukisu = is_resukisu_variant(&branch)
+        || is_resukisu_variant(&variant)
+        || proj
+            .supported_ksu
+            .as_ref()
+            .map_or(false, |k| k.iter().any(|s| is_resukisu_variant(s)));
+
+    let setup_url = if is_resukisu {
+        Some((
             "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh",
             resukisu_setup_arg,
-        )),
-        _ => None,
+        ))
+    } else {
+        None
     };
 
     if let Some((url, arg)) = setup_url {
@@ -1254,7 +1262,7 @@ pub fn handle_build(
 
     let mut feature_suffixes = Vec::new();
     if apply_susfs {
-        if is_resukisu_variant(&branch) {
+        if is_resukisu {
             let susfs = proj
                 .susfs
                 .as_ref()

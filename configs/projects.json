@@ -339,6 +339,13 @@
     "lto": "none",
     "anykernel_config": "canoe",
     "zip_name_prefix": "Mi17_Kernel",
+    "susfs": {
+      "repo": "https://gitlab.com/simonpunk/susfs4ksu.git",
+      "branch": "gki-android16-6.12",
+      "patch_path": "kernel_patches/50_add_susfs_in_gki-android16-6.12.patch",
+      "fs_patch_dir": "kernel_patches/fs",
+      "include_linux_patch_dir": "kernel_patches/include/linux"
+    },
     "bbg": {
       "setup_url": "https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh"
     },

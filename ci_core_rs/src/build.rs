@@ -734,11 +734,17 @@ fn ensure_bbg_lsm(content: &str) -> String {
 }
 
 fn apply_susfs_overlay(kernel_source_path: &Path, susfs: &SusfsConfig) -> Result<()> {
+    if kernel_source_path.join("fs/susfs.c").exists()
+        || kernel_source_path.join("common/fs/susfs.c").exists()
+    {
+        println!("SuSFS files already present in kernel tree, skipping overlay patch.");
+        return Ok(());
+    }
+
     let temp_dir = kernel_source_path.join(".susfs_workspace");
     if temp_dir.exists() {
         fs::remove_dir_all(&temp_dir)?;
     }
-
     run_cmd(
         &[
             "git",
@@ -1170,7 +1176,7 @@ pub fn handle_build(
             && let Some(root_real_path) = common_real_path.parent()
         {
             kcflags = format!(
-                "-O2 -pipe -Wno-error -fno-stack-protector -no-canonical-prefixes -D__ANDROID_COMMON_KERNEL__ -fdebug-prefix-map={}=. -fmacro-prefix-map={}=. -ffile-prefix-map={}=.",
+                "-O2 -pipe -Wno-error -Wno-unused-command-line-argument -fno-stack-protector -no-canonical-prefixes -D__ANDROID_COMMON_KERNEL__ -fdebug-prefix-map={}=. -fmacro-prefix-map={}=. -ffile-prefix-map={}=.",
                 root_real_path.display(),
                 root_real_path.display(),
                 root_real_path.display()

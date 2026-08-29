@@ -44,7 +44,7 @@
   },
   "uws6152_ums312": {
     "repo": "MoeclubM/android_uws6152_4.14.98",
-    "defconfig": "sprd_sharkl5_s100_defconfig",
+    "defconfig": "sprd_uws6152_defconfig",
     "localversion_base": "-UWS6152",
     "build_profile": "gcc_legacy",
     "cross_compile": "aarch64-linux-android-",
@@ -131,6 +131,17 @@
       },
       {
         "path": "modules/common/camera/fd",
+        "make_args": [
+          "BSP_BOARD_CAMERA_MODULE_ISP_VERSION=isp2.6",
+          "BSP_BOARD_CAMERA_MODULE_CSI_VERSION=receiver_r2p1",
+          "BSP_BOARD_CAMERA_MODULE_ISP_ADAPT_VERSION=sharkl5",
+          "BSP_BOARD_CAMERA_MODULE_DVFS=sharkl5",
+          "BSP_BOARD_CAMERA_MODULE_CPP_VERSION=lite_r4p0",
+          "BSP_BOARD_CAMERA_MODULE_FD_VERSION=fd2.0"
+        ]
+      },
+      {
+        "path": "modules/common/camera/cpp",
         "make_args": [
           "BSP_BOARD_CAMERA_MODULE_ISP_VERSION=isp2.6",
           "BSP_BOARD_CAMERA_MODULE_CSI_VERSION=receiver_r2p1",

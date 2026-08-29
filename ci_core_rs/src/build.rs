@@ -1592,23 +1592,24 @@ pub fn handle_build(
     if legacy_gcc {
         // Install in-tree modules and vendor out-of-tree modules so they can be
         // shipped inside the AnyKernel3 package (vendor/lib/modules overlay).
+        // Absolute paths are required: $(srctree) in command-line variable
+        // assignments expands before the makefile defines it.
+        let kernel_abs = fs::canonicalize(&kernel_source_path)?;
+        let mod_install_arg = format!("INSTALL_MOD_PATH={}/modules_out", kernel_abs.display());
+
         run_cmd_with_env(
-            &[
-                "make",
-                "O=out",
-                "modules_install",
-                "INSTALL_MOD_PATH=$(srctree)/modules_out",
-            ],
+            &["make", "O=out", "modules_install", &mod_install_arg],
             Some(&kernel_source_path),
             &build_env,
         )?;
 
         if let Some(ext_modules) = &proj.external_modules {
             for ext in ext_modules {
+                let m_arg = format!("M={}/{}", kernel_abs.display(), ext.path);
                 let mut cmd = vec![
                     "make".to_string(),
                     "O=out".to_string(),
-                    format!("M=$(srctree)/{}", ext.path),
+                    m_arg.clone(),
                     "modules".to_string(),
                 ];
                 if let Some(args) = &ext.make_args {
@@ -1622,9 +1623,9 @@ pub fn handle_build(
                     &[
                         "make",
                         "O=out",
-                        &format!("M=$(srctree)/{}", ext.path),
+                        &m_arg,
                         "modules_install",
-                        "INSTALL_MOD_PATH=$(srctree)/modules_out",
+                        &mod_install_arg,
                     ],
                     Some(&kernel_source_path),
                     &build_env,

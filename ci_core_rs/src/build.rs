@@ -1459,6 +1459,14 @@ pub fn handle_build(
     )?;
 
     let mut disable_configs = vec!["TRIM_UNUSED_KSYMS"];
+    if legacy_gcc {
+        // Vendor arm64 kernels must not build the EFI stub with gcc 4.9
+        // (undefined __efistub_* symbols), and appended-DTB boot images are
+        // not used on this platform (dtb is a separate partition).
+        disable_configs.push("EFI");
+        disable_configs.push("EFI_STUB");
+        disable_configs.push("BUILD_ARM64_APPENDED_DTB_IMAGE");
+    }
     if let Some(disables) = &proj.disable_security {
         for d in disables {
             disable_configs.push(d);

@@ -610,12 +610,14 @@ write_boot; # use flash_boot to skip ramdisk repack, e.g. for devices with init_
 }
 
 /// Recursively copy every *.ko found under `source` into the flat `dest` directory.
+/// Symlinks (modules_install creates "build"/"source" links) are never followed.
 fn collect_kernel_modules(source: &Path, dest: &Path) -> Result<()> {
     for entry in fs::read_dir(source)? {
         let path = entry?.path();
-        if path.is_dir() {
+        let meta = fs::symlink_metadata(&path)?;
+        if meta.is_dir() {
             collect_kernel_modules(&path, dest)?;
-        } else if path.extension().and_then(|e| e.to_str()) == Some("ko") {
+        } else if meta.is_file() && path.extension().and_then(|e| e.to_str()) == Some("ko") {
             let file_name = path.file_name().unwrap();
             fs::copy(&path, dest.join(file_name))?;
         }

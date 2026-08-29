@@ -609,6 +609,20 @@ write_boot; # use flash_boot to skip ramdisk repack, e.g. for devices with init_
     }
 }
 
+/// Recursively copy every *.ko found under `source` into the flat `dest` directory.
+fn collect_kernel_modules(source: &Path, dest: &Path) -> Result<()> {
+    for entry in fs::read_dir(source)? {
+        let path = entry?.path();
+        if path.is_dir() {
+            collect_kernel_modules(&path, dest)?;
+        } else if path.extension().and_then(|e| e.to_str()) == Some("ko") {
+            let file_name = path.file_name().unwrap();
+            fs::copy(&path, dest.join(file_name))?;
+        }
+    }
+    Ok(())
+}
+
 fn copy_dir_files(source: &Path, dest: &Path) -> Result<()> {
     if !source.is_dir() {
         return Err(anyhow!("Source directory not found: {:?}", source));
@@ -1040,6 +1054,7 @@ pub fn handle_build(
 
     let target_soc_str = project_key.split('_').nth(1).unwrap_or("unknown");
     let is_sm8850 = target_soc_str == "sm8850";
+    let legacy_gcc = proj.build_profile.as_deref() == Some("gcc_legacy");
 
     let wrapper_dir = env::current_dir()?.join(".compiler_wrappers");
     let _ = fs::create_dir_all(&wrapper_dir);
@@ -1159,18 +1174,32 @@ pub fn handle_build(
     build_env.insert("PATH".to_string(), new_path);
     build_env.insert("ARCH".to_string(), "arm64".to_string());
     build_env.insert("SUBARCH".to_string(), "arm64".to_string());
-    build_env.insert("CLANG_TRIPLE".to_string(), "aarch64-linux-gnu-".to_string());
+    if !legacy_gcc {
+        build_env.insert("CLANG_TRIPLE".to_string(), "aarch64-linux-gnu-".to_string());
+    }
     build_env.insert(
         "CROSS_COMPILE".to_string(),
-        "aarch64-linux-gnu-".to_string(),
+        if legacy_gcc {
+            proj.cross_compile
+                .clone()
+                .unwrap_or_else(|| "aarch64-linux-android-".to_string())
+        } else {
+            "aarch64-linux-gnu-".to_string()
+        },
     );
-    build_env.insert(
-        "CROSS_COMPILE_COMPAT".to_string(),
-        "arm-linux-gnueabi-".to_string(),
-    );
+    if !legacy_gcc {
+        build_env.insert(
+            "CROSS_COMPILE_COMPAT".to_string(),
+            "arm-linux-gnueabi-".to_string(),
+        );
+    }
     build_env.insert("TZ".to_string(), "Asia/Hong_Kong".to_string());
 
-    let mut kcflags = "-O2 -pipe -Wno-error -D__ANDROID_COMMON_KERNEL__".to_string();
+    let mut kcflags = if legacy_gcc {
+        "-O2 -pipe -Wno-error".to_string()
+    } else {
+        "-O2 -pipe -Wno-error -D__ANDROID_COMMON_KERNEL__".to_string()
+    };
     if is_sm8850 {
         if let Ok(common_real_path) = fs::canonicalize(&kernel_source_path)
             && let Some(root_real_path) = common_real_path.parent()
@@ -1292,31 +1321,50 @@ pub fn handle_build(
     .trim()
     .to_string();
 
-    let mut make_args = vec![
-        "O=out",
-        "ARCH=arm64",
-        "SUBARCH=arm64",
-        "LLVM=1",
-        "LLVM_IAS=1",
-        "LD=ld.lld",
-        "HOSTLD=ld.lld",
-        "AR=llvm-ar",
-        "NM=llvm-nm",
-        "OBJCOPY=llvm-objcopy",
-        "OBJDUMP=llvm-objdump",
-        "OBJSIZE=llvm-size",
-        "READELF=llvm-readelf",
-        "STRIP=llvm-strip",
-        "BINDGEN=bindgen",
-    ];
+    let mut make_args = if legacy_gcc {
+        vec![
+            "O=out",
+            "ARCH=arm64",
+            "SUBARCH=arm64",
+        ]
+    } else {
+        vec![
+            "O=out",
+            "ARCH=arm64",
+            "SUBARCH=arm64",
+            "LLVM=1",
+            "LLVM_IAS=1",
+            "LD=ld.lld",
+            "HOSTLD=ld.lld",
+            "AR=llvm-ar",
+            "NM=llvm-nm",
+            "OBJCOPY=llvm-objcopy",
+            "OBJDUMP=llvm-objdump",
+            "OBJSIZE=llvm-size",
+            "READELF=llvm-readelf",
+            "STRIP=llvm-strip",
+            "BINDGEN=bindgen",
+        ]
+    };
 
     let soc_arg = format!("TARGET_SOC={}", target_soc_str);
-    make_args.push(&soc_arg);
+    let cross_arg = format!(
+        "CROSS_COMPILE={}",
+        proj.cross_compile
+            .as_deref()
+            .unwrap_or("aarch64-linux-android-")
+    );
 
-    make_args.push(&rustc_arg);
-    make_args.push(&hostrustc_arg);
-    make_args.push(&cc_arg);
-    make_args.push(&hostcc_arg);
+    if !legacy_gcc {
+        make_args.push(&soc_arg);
+
+        make_args.push(&rustc_arg);
+        make_args.push(&hostrustc_arg);
+        make_args.push(&cc_arg);
+        make_args.push(&hostcc_arg);
+    } else {
+        make_args.push(&cross_arg);
+    }
 
     fs::write(kernel_source_path.join("protected_module_names_list"), "")?;
     fs::write(kernel_source_path.join("protected_exports_list"), "")?;
@@ -1326,10 +1374,12 @@ pub fn handle_build(
     exclude_data.push_str("\nprotected_module_names_list\nprotected_exports_list\n");
     let _ = fs::write(git_exclude_path, exclude_data);
 
-    build_env.insert("CC".to_string(), cc_cmd.clone());
-    build_env.insert("HOSTCC".to_string(), cc_cmd.clone());
-    build_env.insert("LD".to_string(), "ld.lld".to_string());
-    build_env.insert("HOSTLD".to_string(), "ld.lld".to_string());
+    if !legacy_gcc {
+        build_env.insert("CC".to_string(), cc_cmd.clone());
+        build_env.insert("HOSTCC".to_string(), cc_cmd.clone());
+        build_env.insert("LD".to_string(), "ld.lld".to_string());
+        build_env.insert("HOSTLD".to_string(), "ld.lld".to_string());
+    }
 
     let build_variant_suffix = variant_suffix(&branch);
 
@@ -1539,6 +1589,50 @@ pub fn handle_build(
         fs::write(kernel_source_path.join("localversion"), "")?;
     }
 
+    if legacy_gcc {
+        // Install in-tree modules and vendor out-of-tree modules so they can be
+        // shipped inside the AnyKernel3 package (vendor/lib/modules overlay).
+        run_cmd_with_env(
+            &[
+                "make",
+                "O=out",
+                "modules_install",
+                "INSTALL_MOD_PATH=$(srctree)/modules_out",
+            ],
+            Some(&kernel_source_path),
+            &build_env,
+        )?;
+
+        if let Some(ext_modules) = &proj.external_modules {
+            for ext in ext_modules {
+                let mut cmd = vec![
+                    "make".to_string(),
+                    "O=out".to_string(),
+                    format!("M=$(srctree)/{}", ext.path),
+                    "modules".to_string(),
+                ];
+                if let Some(args) = &ext.make_args {
+                    cmd.extend(args.iter().cloned());
+                }
+                let refs: Vec<&str> = cmd.iter().map(|s| s.as_str()).collect();
+                println!("Building external module: {}", ext.path);
+                run_cmd_with_env(&refs, Some(&kernel_source_path), &build_env)?;
+
+                run_cmd_with_env(
+                    &[
+                        "make",
+                        "O=out",
+                        &format!("M=$(srctree)/{}", ext.path),
+                        "modules_install",
+                        "INSTALL_MOD_PATH=$(srctree)/modules_out",
+                    ],
+                    Some(&kernel_source_path),
+                    &build_env,
+                )?;
+            }
+        }
+    }
+
     prepare_anykernel_worktree(Path::new("AnyKernel3"), offline)?;
 
     if let Some(config_key) = proj.anykernel_config.as_deref() {
@@ -1552,6 +1646,22 @@ pub fn handle_build(
     }
 
     fs::copy(image_path, "AnyKernel3/Image")?;
+
+    if legacy_gcc {
+        // Flatten built modules into the AnyKernel3 vendor modules overlay.
+        let modules_root = kernel_source_path.join("modules_out/lib/modules");
+        if modules_root.exists() {
+            let dest = Path::new("AnyKernel3/modules/vendor/lib/modules");
+            fs::create_dir_all(dest)?;
+            for entry in fs::read_dir(&modules_root)? {
+                let ver_dir = entry?.path();
+                if !ver_dir.is_dir() {
+                    continue;
+                }
+                collect_kernel_modules(&ver_dir, dest)?;
+            }
+        }
+    }
 
     let hkt = FixedOffset::east_opt(8 * 3600).ok_or_else(|| anyhow!("Invalid HKT offset"))?;
     let date_str = Utc::now()
@@ -1630,7 +1740,11 @@ pub fn handle_build(
                 false,
             )?;
 
-            handle_notify(release_tag)?;
+            if let Err(e) = handle_notify(release_tag) {
+                // Notification is best-effort; a missing/misconfigured Telegram
+                // bot must not fail an otherwise successful release.
+                println!("Telegram notification failed: {e}");
+            }
         } else {
             return Err(anyhow!("Final zip not found"));
         }

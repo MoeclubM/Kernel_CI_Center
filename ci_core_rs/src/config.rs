@@ -21,6 +21,21 @@ pub struct ProjectConfig {
     pub susfs: Option<SusfsConfig>,
     pub bbg: Option<BbgConfig>,
     pub watch_upstream_variants: Option<Vec<String>>,
+    /// Optional build profile. Set to "gcc_legacy" for vendor kernels that must
+    /// be built with a GCC toolchain instead of the clang/LLVM pipeline.
+    pub build_profile: Option<String>,
+    /// CROSS_COMPILE prefix used by the gcc_legacy profile (default "aarch64-linux-android-").
+    pub cross_compile: Option<String>,
+    /// Out-of-tree modules (e.g. vendor camera stacks) built after the main kernel.
+    pub external_modules: Option<Vec<ExternalModuleConfig>>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ExternalModuleConfig {
+    /// Module directory, relative to the kernel source root.
+    pub path: String,
+    /// Extra make arguments required by the module (e.g. BSP_BOARD_CAMERA_*).
+    pub make_args: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

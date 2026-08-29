@@ -15,6 +15,7 @@ on:
           - tabs10_mt6989
           - z6_sm8650
           - mi17_sm8850
+          - uws6152_ums312
       branch:
         description: 'Git Branch/Tag'
         required: true
@@ -148,7 +149,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
         run: |
-          gh release download ci-core-latest --repo YuzakiKokuban/Kokuban_Kernel_CI_Center -p "kokuban_ci_core"
+          gh release download ci-core-latest --repo MoeclubM/Kernel_CI_Center -p "kokuban_ci_core"
           chmod +x kokuban_ci_core
 
       - name: Parse Configuration

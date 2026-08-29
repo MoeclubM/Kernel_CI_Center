@@ -182,5 +182,27 @@
     "patch_vbmeta_flag": "auto",
     "boot_setup": "split_boot",
     "boot_finalize": "flash_boot"
+  },
+  "uws6152": {
+    "kernel_string": "UWS6152-Kokuban-Kernel",
+    "device_check": true,
+    "modules": true,
+    "systemless": true,
+    "cleanup": true,
+    "cleanup_on_abort": false,
+    "device_names": [
+      "uws6152_1h10_go",
+      "uws6152_1h10_gofu_project",
+      ""
+    ],
+    "supported_versions": "",
+    "supported_patchlevels": "",
+    "supported_vendorpatchlevels": "",
+    "block": "/dev/block/by-name/boot",
+    "is_slot_device": false,
+    "ramdisk_compression": "auto",
+    "patch_vbmeta_flag": "auto",
+    "boot_setup": "split_boot",
+    "boot_finalize": "flash_boot"
   }
 }

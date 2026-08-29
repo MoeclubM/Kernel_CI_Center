@@ -139,17 +139,6 @@
           "BSP_BOARD_CAMERA_MODULE_CPP_VERSION=lite_r4p0",
           "BSP_BOARD_CAMERA_MODULE_FD_VERSION=fd2.0"
         ]
-      },
-      {
-        "path": "modules/common/camera/cpp",
-        "make_args": [
-          "BSP_BOARD_CAMERA_MODULE_ISP_VERSION=isp2.6",
-          "BSP_BOARD_CAMERA_MODULE_CSI_VERSION=receiver_r2p1",
-          "BSP_BOARD_CAMERA_MODULE_ISP_ADAPT_VERSION=sharkl5",
-          "BSP_BOARD_CAMERA_MODULE_DVFS=sharkl5",
-          "BSP_BOARD_CAMERA_MODULE_CPP_VERSION=lite_r4p0",
-          "BSP_BOARD_CAMERA_MODULE_FD_VERSION=fd2.0"
-        ]
       }
     ]
   }

@@ -531,6 +531,9 @@ fn handle_add(options: AddOptions) -> Result<()> {
         susfs: None,
         bbg: None,
         watch_upstream_variants: None,
+        build_profile: None,
+        cross_compile: None,
+        external_modules: None,
     };
 
     projects.insert(options.key, serde_json::to_value(new_proj)?);

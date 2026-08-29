@@ -43,14 +43,8 @@ Kokuban Kernel CI Center 是一个专为 Android Linux 内核编译设计的集�
 
 | 代号 | 设备型号 (SoC) | 对应项目 Key |
 | :--- | :--- | :--- |
-| **Z5** | Galaxy Z Fold/Flip 5 (SM8550) | `z5_sm8550` |
-| **S23** | Galaxy S23 Series (SM8550) | `s23_sm8550` |
-| **S24** | Galaxy S24 Series (SM8650) | `s24_sm8650` |
-| **S25** | Galaxy S25 Series (SM8750) | `s25_sm8750` |
-| **Tab S9** | Galaxy Tab S9 Series (SM8550) | `tabs9_sm8550` |
-| **Tab S10** | Galaxy Tab S10 (MT6989) | `tabs10_mt6989` |
-| **Z6** | Galaxy Z Fold/Flip 6 (SM8650) | `z6_sm8650` |
 | **Mi17** | Xiaomi 17 Series (SM8850) | `mi17_sm8850` |
+| **UWS6152** | UWS6152 Smartwatch (UMS312/sharkl5) | `uws6152_ums312` |
 
 ## 构建与使用
 

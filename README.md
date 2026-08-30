@@ -44,7 +44,8 @@ Kokuban Kernel CI Center 是一个专为 Android Linux 内核编译设计的集�
 | 代号 | 设备型号 (SoC) | 对应项目 Key |
 | :--- | :--- | :--- |
 | **Mi17** | Xiaomi 17 Series (SM8850) | `mi17_sm8850` |
-| **UWS6152** | UWS6152 Smartwatch (UMS312/sharkl5) | `uws6152_ums312` |
+| **UWS6152** | UWS6152 Smartwatch (w527/cd12x) | `uws6152_ums312` |
+| **UWS6152-CD12M** | UWS6152 Smartwatch (CD12M) | `uws6152_cd12m` |
 
 ## 构建与使用
 

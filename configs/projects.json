@@ -52,8 +52,8 @@
       "resukisu"
     ],
     "readme_placeholders": {
-      "DEVICE_NAME_CN": "UWS6152 智能手表 (w527)",
-      "DEVICE_NAME_EN": "UWS6152 Smartwatch (w527)"
+      "DEVICE_NAME_CN": "UWS6152 智能手表 (w527/cd12x)",
+      "DEVICE_NAME_EN": "UWS6152 Smartwatch (w527/cd12x)"
     },
     "toolchain_urls": [
       "https://github.com/MoeclubM/android_uws6152_4.14.98/releases/download/toolchain/aarch64-gcc49.tar.gz"
@@ -64,6 +64,115 @@
     ],
     "anykernel_config": "uws6152",
     "zip_name_prefix": "UWS6152_Kernel",
+    "external_modules": [
+      {
+        "path": "modules/common/camera/core",
+        "make_args": [
+          "BSP_BOARD_CAMERA_MODULE_ISP_VERSION=isp2.6",
+          "BSP_BOARD_CAMERA_MODULE_CSI_VERSION=receiver_r2p1",
+          "BSP_BOARD_CAMERA_MODULE_ISP_ADAPT_VERSION=sharkl5",
+          "BSP_BOARD_CAMERA_MODULE_DVFS=sharkl5",
+          "BSP_BOARD_CAMERA_MODULE_CPP_VERSION=lite_r4p0",
+          "BSP_BOARD_CAMERA_MODULE_FD_VERSION=fd2.0"
+        ]
+      },
+      {
+        "path": "modules/common/camera/sensor",
+        "make_args": [
+          "BSP_BOARD_CAMERA_MODULE_ISP_VERSION=isp2.6",
+          "BSP_BOARD_CAMERA_MODULE_CSI_VERSION=receiver_r2p1",
+          "BSP_BOARD_CAMERA_MODULE_ISP_ADAPT_VERSION=sharkl5",
+          "BSP_BOARD_CAMERA_MODULE_DVFS=sharkl5",
+          "BSP_BOARD_CAMERA_MODULE_CPP_VERSION=lite_r4p0",
+          "BSP_BOARD_CAMERA_MODULE_FD_VERSION=fd2.0"
+        ]
+      },
+      {
+        "path": "modules/common/camera/flash/flash_drv",
+        "make_args": [
+          "BSP_BOARD_CAMERA_MODULE_ISP_VERSION=isp2.6",
+          "BSP_BOARD_CAMERA_MODULE_CSI_VERSION=receiver_r2p1",
+          "BSP_BOARD_CAMERA_MODULE_ISP_ADAPT_VERSION=sharkl5",
+          "BSP_BOARD_CAMERA_MODULE_DVFS=sharkl5",
+          "BSP_BOARD_CAMERA_MODULE_CPP_VERSION=lite_r4p0",
+          "BSP_BOARD_CAMERA_MODULE_FD_VERSION=fd2.0"
+        ]
+      },
+      {
+        "path": "modules/common/camera/flash/ocp8137",
+        "make_args": [
+          "BSP_BOARD_CAMERA_MODULE_ISP_VERSION=isp2.6",
+          "BSP_BOARD_CAMERA_MODULE_CSI_VERSION=receiver_r2p1",
+          "BSP_BOARD_CAMERA_MODULE_ISP_ADAPT_VERSION=sharkl5",
+          "BSP_BOARD_CAMERA_MODULE_DVFS=sharkl5",
+          "BSP_BOARD_CAMERA_MODULE_CPP_VERSION=lite_r4p0",
+          "BSP_BOARD_CAMERA_MODULE_FD_VERSION=fd2.0"
+        ]
+      },
+      {
+        "path": "modules/common/camera/flash/sc2703s",
+        "make_args": [
+          "BSP_BOARD_CAMERA_MODULE_ISP_VERSION=isp2.6",
+          "BSP_BOARD_CAMERA_MODULE_CSI_VERSION=receiver_r2p1",
+          "BSP_BOARD_CAMERA_MODULE_ISP_ADAPT_VERSION=sharkl5",
+          "BSP_BOARD_CAMERA_MODULE_DVFS=sharkl5",
+          "BSP_BOARD_CAMERA_MODULE_CPP_VERSION=lite_r4p0",
+          "BSP_BOARD_CAMERA_MODULE_FD_VERSION=fd2.0"
+        ]
+      },
+      {
+        "path": "modules/common/camera/mmdvfs",
+        "make_args": [
+          "BSP_BOARD_CAMERA_MODULE_ISP_VERSION=isp2.6",
+          "BSP_BOARD_CAMERA_MODULE_CSI_VERSION=receiver_r2p1",
+          "BSP_BOARD_CAMERA_MODULE_ISP_ADAPT_VERSION=sharkl5",
+          "BSP_BOARD_CAMERA_MODULE_DVFS=sharkl5",
+          "BSP_BOARD_CAMERA_MODULE_CPP_VERSION=lite_r4p0",
+          "BSP_BOARD_CAMERA_MODULE_FD_VERSION=fd2.0"
+        ]
+      },
+      {
+        "path": "modules/common/camera/fd",
+        "make_args": [
+          "BSP_BOARD_CAMERA_MODULE_ISP_VERSION=isp2.6",
+          "BSP_BOARD_CAMERA_MODULE_CSI_VERSION=receiver_r2p1",
+          "BSP_BOARD_CAMERA_MODULE_ISP_ADAPT_VERSION=sharkl5",
+          "BSP_BOARD_CAMERA_MODULE_DVFS=sharkl5",
+          "BSP_BOARD_CAMERA_MODULE_CPP_VERSION=lite_r4p0",
+          "BSP_BOARD_CAMERA_MODULE_FD_VERSION=fd2.0"
+        ]
+      }
+    ],
+    "susfs": {
+      "repo": "https://gitlab.com/simonpunk/susfs4ksu.git",
+      "branch": "master",
+      "patch_path": "kernel_patches/50_add_susfs_in_kernel-4.14.patch",
+      "fs_patch_dir": "kernel_patches/fs",
+      "include_linux_patch_dir": "kernel_patches/include/linux"
+    }
+  },
+  "uws6152_cd12m": {
+    "repo": "MoeclubM/android_uws6152_4.14.98",
+    "defconfig": "cd12m_defconfig",
+    "localversion_base": "-UWS6152-CD12M",
+    "build_profile": "gcc_legacy",
+    "cross_compile": "aarch64-linux-android-",
+    "supported_ksu": [
+      "resukisu"
+    ],
+    "readme_placeholders": {
+      "DEVICE_NAME_CN": "UWS6152 智能手表 (CD12M)",
+      "DEVICE_NAME_EN": "UWS6152 Smartwatch (CD12M)"
+    },
+    "toolchain_urls": [
+      "https://github.com/MoeclubM/android_uws6152_4.14.98/releases/download/toolchain/aarch64-gcc49.tar.gz"
+    ],
+    "toolchain_path_prefix": "aarch64-linux-android-4.9",
+    "toolchain_path_exports": [
+      "bin"
+    ],
+    "anykernel_config": "uws6152",
+    "zip_name_prefix": "CD12M_Kernel",
     "external_modules": [
       {
         "path": "modules/common/camera/core",

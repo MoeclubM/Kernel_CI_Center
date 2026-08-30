@@ -6,7 +6,7 @@ on:
         description: 'Select Project'
         required: true
         type: choice
-        options: [mi17_sm8850, uws6152_ums312]
+        options: [mi17_sm8850, uws6152_ums312, uws6152_cd12m]
 
 permissions:
   contents: write

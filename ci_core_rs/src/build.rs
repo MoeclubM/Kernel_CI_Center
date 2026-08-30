@@ -1383,21 +1383,21 @@ pub fn handle_build(
                 .as_ref()
                 .ok_or_else(|| anyhow!("Project {} does not define a SuSFS source", project_key))?;
             apply_susfs_overlay(&kernel_source_path, susfs)?;
-            // SUSFS on SPRD 4.14 wear must stay on Manual Hook (inline hook sites missing in input.c)
+            // SUSFS on SPRD 4.14 keep Manual Hook (inline sites missing) -- turn check error into warning
             {
                 let hook_check = kernel_source_path.join("KernelSU/kernel/tools/inline_hook_check.mk");
                 if hook_check.exists() {
                     if let Ok(mut c) = fs::read_to_string(&hook_check) {
-                        c = c.replace("$(error You should integrate ReSukiSU", "$(warning You should integrate ReSukiSU");
-                        // Also handle variant without You
+                        let orig = c.clone();
                         c = c.replace("$(error", "$(warning");
-                            c = c.replace("$(error", "$(warning");
+                        if c != orig {
                             let _ = fs::write(&hook_check, c);
-                            println!("Patched inline_hook_check.mk for SPRD Manual Hook.");
+                            println!("Patched inline_hook_check.mk to warning.");
                         }
                     }
                 }
             }
+            // Pin Manual Hook when SUSFS is on
             {
                 let dc_path2 = kernel_source_path.join(format!("arch/arm64/configs/{}", proj.defconfig));
                 if dc_path2.exists() {

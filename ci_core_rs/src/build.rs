@@ -1674,20 +1674,30 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
         disable_configs.push("EFI_STUB");
         disable_configs.push("BUILD_ARM64_APPENDED_DTB_IMAGE");
     }
-    // SPRD wear (sharkl5): stock disables DEVTMPFS, but by-name/PARTNAME uevent
-    // needs DEVTMPFS. Keep enabled for p30 hardcode compatibility and pstore debugging.
-    // Full essential set per plan §3A: MMC/GPT/LOOP/PSTORE.
+    // SPRD wear (sharkl5): stock disables DEVTMPFS to let Android first-stage init mount /dev.
+    // Ensure hardware inline encryption, storage, and pstore ramoops debugging are strictly aligned.
     if legacy_gcc {
         for (k, v) in [
             ("MMC", true),
             ("MMC_BLOCK", true),
             ("MMC_SPRD_SDHCR11", true),
             ("MMC_SDHCI", false),
-            ("DEVTMPFS", true),
-            ("DEVTMPFS_MOUNT", true),
+            ("DEVTMPFS", false),
+            ("DEVTMPFS_MOUNT", false),
             ("EFI_PARTITION", true),
             ("MSDOS_PARTITION", true),
             ("BLK_DEV_LOOP", true),
+            ("BLK_INLINE_ENCRYPTION", true),
+            ("BLK_INLINE_ENCRYPTION_FALLBACK", true),
+            ("FS_ENCRYPTION_INLINE_CRYPT", true),
+            ("SPRD_POWER", true),
+            ("SPRD_POWER_LOG", true),
+            ("SPRD_POWER_LOG_SHARKL5", true),
+            ("TOUCHSCREEN_HYNITRON_TS", true),
+            ("CHARGER_FAN54015", true),
+            ("DW_CHARGER_TYPE_ETA6947", true),
+            ("DA280", true),
+            ("SENSORS_OCH1970", true),
             ("PSTORE", true),
             ("PSTORE_CONSOLE", true),
             ("PSTORE_RAM", true),

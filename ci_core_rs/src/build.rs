@@ -811,6 +811,28 @@ fn apply_susfs_overlay(kernel_source_path: &Path, susfs: &SusfsConfig) -> Result
     )
     .ok_or_else(|| anyhow!("Could not locate kernel include/linux directory for SuSFS"))?;
     copy_dir_files(&include_source, &include_target)?;
+    // Non-GKI 4.14: sucompat.h expects <linux/susfs_def.h> when CONFIG_KSU_SUSFS=y
+    {
+        let shim = include_target.join("susfs_def.h");
+        if !shim.exists() {
+            let content = r#"#ifndef _LINUX_SUSFS_DEF_H
+#define _LINUX_SUSFS_DEF_H
+#include <linux/susfs.h>
+#include <linux/sched.h>
+#ifdef CONFIG_64BIT
+#define TIF_SUSFS_NO_SU 62
+#else
+#define TIF_SUSFS_NO_SU 30
+#endif
+static inline bool susfs_is_current_proc_no_su(void) { return test_thread_flag(TIF_SUSFS_NO_SU); }
+static inline void susfs_set_current_proc_no_su(void) { set_thread_flag(TIF_SUSFS_NO_SU); }
+static inline void susfs_clear_current_proc_no_su(void) { clear_thread_flag(TIF_SUSFS_NO_SU); }
+#endif
+"#;
+            let _ = fs::write(&shim, content);
+            println!("Created susfs_def.h shim for non-GKI SUSFS.");
+        }
+    }
 
     // SPRD sharkl5 (4.14 wear) diverges from upstream: faccessat hook is
     // guarded by CONFIG_KSU_MANUAL_HOOK, but upstream SUSFS 4.14 patch

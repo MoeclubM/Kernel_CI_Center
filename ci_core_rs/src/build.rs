@@ -833,7 +833,35 @@ static inline void susfs_clear_current_proc_no_su(void) { clear_thread_flag(TIF_
             println!("Created susfs_def.h shim for non-GKI SUSFS.");
         }
     }
-
+    // Ensure 4.14 susfs.h defines GKI-era CMDs that ReSukiSU dispatch expects (avoid undeclared)
+    {
+        let hdr = include_target.join("susfs.h");
+        if hdr.exists() {
+            if let Ok(mut h) = fs::read_to_string(&hdr) {
+                let mut changed = false;
+                let defs = [
+                    ("#define CMD_SUSFS_ADD_SUS_PATH_LOOP", "#define CMD_SUSFS_ADD_SUS_PATH_LOOP 0x55560"),
+                    ("#define CMD_SUSFS_HIDE_SUS_MNTS_FOR_NON_SU_PROCS", "#define CMD_SUSFS_HIDE_SUS_MNTS_FOR_NON_SU_PROCS 0x55561"),
+                    ("#define CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG", "#define CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG 0x55562"),
+                    ("#define CMD_SUSFS_ADD_OPEN_REDIRECT", "#define CMD_SUSFS_ADD_OPEN_REDIRECT 0x55563"),
+                    ("#define CMD_SUSFS_ADD_SUS_MAP ", "#define CMD_SUSFS_ADD_SUS_MAP 0x55564"),
+                    ("#define CMD_SUSFS_ENABLE_AVC_LOG_SPOOFING", "#define CMD_SUSFS_ENABLE_AVC_LOG_SPOOFING 0x55565"),
+                    ("#define CMD_SUSFS_SHOW_ENABLED_FEATURES", "#define CMD_SUSFS_SHOW_ENABLED_FEATURES 0x55566"),
+                    ("#define CMD_SUSFS_SHOW_VARIANT", "#define CMD_SUSFS_SHOW_VARIANT 0x55567"),
+                    ("#define CMD_SUSFS_SHOW_VERSION", "#define CMD_SUSFS_SHOW_VERSION 0x55568"),
+                ];
+                for (pat, def) in defs {
+                    if !h.contains(pat) {
+                        h.push_str(&format!("
+{}
+", def));
+                        changed = true;
+                    }
+                }
+                if changed { let _ = fs::write(&hdr, h); println!("Extended susfs.h with GKI CMD defines."); }
+            }
+        }
+    }
     // SPRD sharkl5 (4.14 wear) diverges from upstream: faccessat hook is
     // guarded by CONFIG_KSU_MANUAL_HOOK, but upstream SUSFS 4.14 patch
     // expects CONFIG_KSU. Rewrite the cloned patch in-place when the

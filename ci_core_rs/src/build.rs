@@ -859,7 +859,16 @@ fn apply_susfs_overlay(kernel_source_path: &Path, susfs: &SusfsConfig) -> Result
                 if open_c.contains(marker) && !open_c.contains("susfs_sus_path_by_filename(fname, &error, SYSCALL_FAMILY_ALL_ENOENT)") {
                     let needle = "#ifdef CONFIG_KSU_MANUAL_HOOK\n\tksu_handle_faccessat(&dfd, &filename, &mode, NULL);\n#endif";
                     if open_c.contains(needle) {
-                        let replacement = "#ifdef CONFIG_KSU_MANUAL_HOOK\n\tksu_handle_faccessat(&dfd, &filename, &mode, NULL);\n#endif\n\n#ifdef CONFIG_KSU_SUSFS_SUS_PATH\n\tfname = getname_safe(filename);\n\tstatus = susfs_sus_path_by_filename(fname, &error, SYSCALL_FAMILY_ALL_ENOENT);\n\tputname_safe(fname);\n\n\tif (status) {\n\t\treturn error;\n\t}\n#endif";
+                        let pre_decl = "#ifdef CONFIG_KSU_SUSFS_SUS_PATH\n\tstruct filename* fname;\n\tint status;\n\tint error;\n#endif\n\n";
+                        let post_fence = "\n\n#ifdef CONFIG_KSU_SUSFS_SUS_PATH\n\tfname = getname_safe(filename);\n\tstatus = susfs_sus_path_by_filename(fname, &error, SYSCALL_FAMILY_ALL_ENOENT);\n\tputname_safe(fname);\n\n\tif (status) {\n\t\treturn error;\n\t}\n#endif";
+                        if !open_c.contains("susfs_sus_path_by_filename(fname, &error, SYSCALL_FAMILY_ALL_ENOENT)") {
+                            let decl_needle = "unsigned int lookup_flags = LOOKUP_FOLLOW;\n#ifdef CONFIG_KSU_MANUAL_HOOK";
+                            let decl_repl = "unsigned int lookup_flags = LOOKUP_FOLLOW;\n".to_string() + &pre_decl + "#ifdef CONFIG_KSU_MANUAL_HOOK";
+                            if open_c.contains(decl_needle) {
+                                open_c = open_c.replace(decl_needle, &decl_repl);
+                            }
+                        }
+                        let replacement = "#ifdef CONFIG_KSU_MANUAL_HOOK\n\tksu_handle_faccessat(&dfd, &filename, &mode, NULL);\n#endif".to_string() + &post_fence;
                         open_c = open_c.replace(needle, replacement);
                         let _ = fs::write(&open_path, open_c);
                         println!("Manually injected SUSFS faccessat fence for SPRD.");

@@ -1657,6 +1657,25 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
         }
     }
 
+    if legacy_gcc {
+        // Fix host dtc yamltree link failure on Ubuntu runners by stripping yamltree objects from dtc build
+        let dtc_makefile = kernel_source_path.join("scripts/dtc/Makefile");
+        if dtc_makefile.exists() {
+            if let Ok(mut c) = fs::read_to_string(&dtc_makefile) {
+                c = c.replace("yamltree.o", "");
+                c = c.replace("$(HOSTLOADLIBES_dtc)", "");
+                let _ = fs::write(&dtc_makefile, c);
+            }
+        }
+        let dtc_src = kernel_source_path.join("scripts/dtc/dtc.c");
+        if dtc_src.exists() {
+            if let Ok(mut c) = fs::read_to_string(&dtc_src) {
+                c = c.replace("dt_to_yaml(dti, outf);", "die(\"yaml format not supported\\n\");");
+                let _ = fs::write(&dtc_src, c);
+            }
+        }
+    }
+
     run_make_targets(
         &kernel_source_path,
         &build_env,

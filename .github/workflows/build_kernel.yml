@@ -138,7 +138,13 @@ jobs:
             echo "ARTIFACT_NAME=$artifact_name"
           } >> "$GITHUB_ENV"
 
-      - name: Download CI Core
+      - name: Prepare Host Dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y libyaml-dev pkg-config bison flex bc libssl-dev libelf-dev
+      continue-on-error: true
+
+    - name: Download CI Core
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
         run: |

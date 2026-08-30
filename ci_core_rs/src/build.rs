@@ -1657,21 +1657,6 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
         }
     }
 
-    if legacy_gcc {
-        // Fix host dtc yamltree link failure on Ubuntu runners by disabling yaml support in host dtc Makefile if libyaml-dev missing
-        let dtc_makefile = kernel_source_path.join("scripts/dtc/Makefile");
-        if dtc_makefile.exists() {
-            if let Ok(mut c) = fs::read_to_string(&dtc_makefile) {
-                let orig = c.clone();
-                c = c.replace("yamltree.o", "");
-                if c != orig {
-                    let _ = fs::write(&dtc_makefile, c);
-                    println!("Patched scripts/dtc/Makefile to disable host yamltree dependency.");
-                }
-            }
-        }
-    }
-
     run_make_targets(
         &kernel_source_path,
         &build_env,

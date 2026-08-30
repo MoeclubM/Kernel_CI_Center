@@ -838,6 +838,19 @@ fn apply_susfs_overlay(kernel_source_path: &Path, susfs: &SusfsConfig) -> Result
         }
     }
 
+    // Enable SUSFS Kconfig in KernelSU if the enable patch exists
+    {
+        let ksu_enable_patch = temp_dir.join("kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch");
+        if ksu_enable_patch.exists() {
+            // Rewrite CONFIG_KSU -> CONFIG_KSU_MANUAL_HOOK for SPRD if needed (same as above)
+            let _ = apply_patch_with_fallbacks(&ksu_enable_patch, kernel_source_path, &["common".to_string(), "kernel_platform/common".to_string()]);
+            // Also handle case where kernel_source has KernelSU as submodule path "KernelSU/kernel"
+            if kernel_source_path.join("KernelSU/kernel/Kconfig").exists() || kernel_source_path.join("kernel/Kconfig").exists() {
+                println!("Applied SUSFS KSU Kconfig patch.");
+            }
+        }
+    }
+
     // Copy SUSFS helpers first; then try the (possibly rewritten) patch.
     // If it still fails (SPRD offsets), fall back to a targeted manual
     // edit for the single divergent hunk (faccessat) and retry.
@@ -1370,6 +1383,23 @@ pub fn handle_build(
                 .as_ref()
                 .ok_or_else(|| anyhow!("Project {} does not define a SuSFS source", project_key))?;
             apply_susfs_overlay(&kernel_source_path, susfs)?;
+            // Ensure SUSFS Kconfig defaults to y when overlay succeeded
+            {
+                let defconfig_path = kernel_source_path.join(format!("arch/arm64/configs/{}", proj.defconfig));
+                if defconfig_path.exists() {
+                    if let Ok(mut dc) = fs::read_to_string(&defconfig_path) {
+                        dc = upsert_kconfig_entry(&dc, "CONFIG_KSU_SUSFS", "y");
+                        dc = upsert_kconfig_entry(&dc, "CONFIG_KSU_SUSFS_SUS_PATH", "y");
+                        dc = upsert_kconfig_entry(&dc, "CONFIG_KSU_SUSFS_SUS_MOUNT", "y");
+                        dc = upsert_kconfig_entry(&dc, "CONFIG_KSU_SUSFS_SUS_KSTAT", "y");
+                        dc = upsert_kconfig_entry(&dc, "CONFIG_KSU_SUSFS_SUS_MAPS", "y");
+                        dc = upsert_kconfig_entry(&dc, "CONFIG_KSU_SUSFS_TRY_UMOUNT", "y");
+                        dc = upsert_kconfig_entry(&dc, "CONFIG_KSU_SUSFS_SPOOF_UNAME", "y");
+                        let _ = fs::write(&defconfig_path, dc);
+                        println!("Enabled CONFIG_KSU_SUSFS family in defconfig.");
+                    }
+                }
+            }
             feature_suffixes.push("susfs".to_string());
         } else {
             println!(

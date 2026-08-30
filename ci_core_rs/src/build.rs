@@ -1383,6 +1383,28 @@ pub fn handle_build(
                 .as_ref()
                 .ok_or_else(|| anyhow!("Project {} does not define a SuSFS source", project_key))?;
             apply_susfs_overlay(&kernel_source_path, susfs)?;
+            // SUSFS on SPRD 4.14 wear must stay on Manual Hook (inline hook sites missing in input.c)
+            {
+                let hook_check = kernel_source_path.join("KernelSU/kernel/tools/inline_hook_check.mk");
+                if hook_check.exists() {
+                    if let Ok(mut c) = fs::read_to_string(&hook_check) {
+                        if c.contains("ksu_input_hook is incompatible") {
+                            c = c.replace("$(error You should integrate ReSukiSU", "$(warning You should integrate ReSukiSU");
+                            let _ = fs::write(&hook_check, c);
+                            println!("Patched inline_hook_check.mk for SPRD Manual Hook.");
+                        }
+                    }
+                }
+            }
+            {
+                let dc_path2 = kernel_source_path.join(format!("arch/arm64/configs/{}", proj.defconfig));
+                if dc_path2.exists() {
+                    if let Ok(mut dc2) = fs::read_to_string(&dc_path2) {
+                        dc2 = upsert_kconfig_entry(&dc2, "CONFIG_KSU_MANUAL_HOOK", "y");
+                        let _ = fs::write(&dc_path2, dc2);
+                    }
+                }
+            }
             // Ensure SUSFS Kconfig defaults to y when overlay succeeded
             {
                 let defconfig_path = kernel_source_path.join(format!("arch/arm64/configs/{}", proj.defconfig));

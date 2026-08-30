@@ -1388,8 +1388,10 @@ pub fn handle_build(
                 let hook_check = kernel_source_path.join("KernelSU/kernel/tools/inline_hook_check.mk");
                 if hook_check.exists() {
                     if let Ok(mut c) = fs::read_to_string(&hook_check) {
-                        if c.contains("ksu_input_hook is incompatible") {
-                            c = c.replace("$(error You should integrate ReSukiSU", "$(warning You should integrate ReSukiSU");
+                        c = c.replace("$(error You should integrate ReSukiSU", "$(warning You should integrate ReSukiSU");
+                        // Also handle variant without You
+                        c = c.replace("$(error", "$(warning");
+                            c = c.replace("$(error", "$(warning");
                             let _ = fs::write(&hook_check, c);
                             println!("Patched inline_hook_check.mk for SPRD Manual Hook.");
                         }

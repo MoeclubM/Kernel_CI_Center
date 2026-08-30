@@ -869,7 +869,7 @@ fn apply_susfs_overlay(kernel_source_path: &Path, susfs: &SusfsConfig) -> Result
                             }
                         }
                         let replacement = "#ifdef CONFIG_KSU_MANUAL_HOOK\n\tksu_handle_faccessat(&dfd, &filename, &mode, NULL);\n#endif".to_string() + &post_fence;
-                        open_c = open_c.replace(needle, replacement);
+                        open_c = open_c.replace(needle, &replacement);
                         let _ = fs::write(&open_path, open_c);
                         println!("Manually injected SUSFS faccessat fence for SPRD.");
                     }

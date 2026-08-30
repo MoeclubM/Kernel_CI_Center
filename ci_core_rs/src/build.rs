@@ -812,11 +812,70 @@ fn apply_susfs_overlay(kernel_source_path: &Path, susfs: &SusfsConfig) -> Result
     .ok_or_else(|| anyhow!("Could not locate kernel include/linux directory for SuSFS"))?;
     copy_dir_files(&include_source, &include_target)?;
 
-    apply_patch_with_fallbacks(
+    // SPRD sharkl5 (4.14 wear) diverges from upstream: faccessat hook is
+    // guarded by CONFIG_KSU_MANUAL_HOOK, but upstream SUSFS 4.14 patch
+    // expects CONFIG_KSU. Rewrite the cloned patch in-place when the
+    // checked-out tree uses the MANUAL_HOOK spelling so the hunk at
+    // fs/open.c:389 applies.
+    if kernel_source_path.join("fs/open.c").exists() {
+        if let Ok(open_c) = fs::read_to_string(kernel_source_path.join("fs/open.c")) {
+            if open_c.contains("CONFIG_KSU_MANUAL_HOOK") && open_c.contains("ksu_handle_faccessat") {
+                if let Ok(patch_text) = fs::read_to_string(&patch_path) {
+                    let fixed = patch_text.replace(
+                        "#ifdef CONFIG_KSU\n\tksu_handle_faccessat",
+                        "#ifdef CONFIG_KSU_MANUAL_HOOK\n\tksu_handle_faccessat",
+                    );
+                    if fixed != patch_text {
+                        let _ = fs::write(&patch_path, fixed);
+                        println!("Rewrote SUSFS patch for KSU_MANUAL_HOOK (SPRD compat).");
+                    }
+                }
+            }
+        }
+    }
+
+    // Copy SUSFS helpers first; then try the (possibly rewritten) patch.
+    // If it still fails (SPRD offsets), fall back to a targeted manual
+    // edit for the single divergent hunk (faccessat) and retry.
+    let mut patch_ok = apply_patch_with_fallbacks(
         &patch_path,
         kernel_source_path,
         &["common".to_string(), "kernel_platform/common".to_string()],
-    )?;
+    )
+    .is_ok();
+
+    if !patch_ok {
+        let open_path = kernel_source_path.join("fs/open.c");
+        if open_path.exists() {
+            if let Ok(mut open_c) = fs::read_to_string(&open_path) {
+                // Insert SUSFS_SUS_PATH block after the ksu_handle_faccessat call
+                // when the upstream patch couldn't apply (SPRD layout).
+                // Heuristic: if faccessat does not yet contain susfs, splice it
+                let marker = "ksu_handle_faccessat(&dfd, &filename, &mode, NULL);";
+                if open_c.contains(marker) && !open_c.contains("susfs_sus_path_by_filename(fname, &error, SYSCALL_FAMILY_ALL_ENOENT)") {
+                    let needle = "#ifdef CONFIG_KSU_MANUAL_HOOK\n\tksu_handle_faccessat(&dfd, &filename, &mode, NULL);\n#endif";
+                    if open_c.contains(needle) {
+                        let replacement = "#ifdef CONFIG_KSU_MANUAL_HOOK\n\tksu_handle_faccessat(&dfd, &filename, &mode, NULL);\n#endif\n\n#ifdef CONFIG_KSU_SUSFS_SUS_PATH\n\tfname = getname_safe(filename);\n\tstatus = susfs_sus_path_by_filename(fname, &error, SYSCALL_FAMILY_ALL_ENOENT);\n\tputname_safe(fname);\n\n\tif (status) {\n\t\treturn error;\n\t}\n#endif";
+                        open_c = open_c.replace(needle, replacement);
+                        let _ = fs::write(&open_path, open_c);
+                        println!("Manually injected SUSFS faccessat fence for SPRD.");
+                    }
+                }
+            }
+            // Retry patch with -N (already-applied hunks are skipped)
+            patch_ok = apply_patch_with_fallbacks(
+                &patch_path,
+                kernel_source_path,
+                &["common".to_string(), "kernel_platform/common".to_string()],
+            )
+            .is_ok();
+        }
+    }
+
+    if !patch_ok {
+        fs::remove_dir_all(&temp_dir)?;
+        return Err(anyhow!("Failed to apply patch {:?}", patch_path));
+    }
 
     fs::remove_dir_all(&temp_dir)?;
     Ok(())
@@ -1466,6 +1525,25 @@ pub fn handle_build(
         disable_configs.push("EFI");
         disable_configs.push("EFI_STUB");
         disable_configs.push("BUILD_ARM64_APPENDED_DTB_IMAGE");
+    }
+    // SPRD wear (sharkl5): stock disables DEVTMPFS, but by-name/PARTNAME uevent
+    // needs DEVTMPFS. Keep enabled for p30 hardcode compatibility and pstore debugging.
+    if legacy_gcc {
+        for (k, v) in [
+            ("DEVTMPFS", true),
+            ("DEVTMPFS_MOUNT", true),
+            ("EFI_PARTITION", true),
+            ("PSTORE", true),
+            ("PSTORE_CONSOLE", true),
+            ("PSTORE_RAM", true),
+        ] {
+            let flag = if v { "--enable" } else { "--disable" };
+            let _ = run_cmd(
+                &["scripts/config", "--file", "out/.config", flag, k],
+                Some(&kernel_source_path),
+                false,
+            );
+        }
     }
     if let Some(disables) = &proj.disable_security {
         for d in disables {

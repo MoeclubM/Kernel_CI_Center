@@ -44,7 +44,7 @@
   },
   "uws6152_ums312": {
     "repo": "MoeclubM/android_uws6152_4.14.98",
-    "defconfig": "sprd_uws6152_defconfig",
+    "defconfig": "sprd_sharkl5_s100_defconfig",
     "localversion_base": "-UWS6152",
     "build_profile": "gcc_legacy",
     "cross_compile": "aarch64-linux-android-",

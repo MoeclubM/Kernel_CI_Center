@@ -821,7 +821,11 @@ fn apply_susfs_overlay(kernel_source_path: &Path, susfs: &SusfsConfig) -> Result
         if let Ok(open_c) = fs::read_to_string(kernel_source_path.join("fs/open.c")) {
             if open_c.contains("CONFIG_KSU_MANUAL_HOOK") && open_c.contains("ksu_handle_faccessat") {
                 if let Ok(patch_text) = fs::read_to_string(&patch_path) {
-                    let fixed = patch_text.replace(
+                    let mut fixed = patch_text.replace(
+                        "#ifdef CONFIG_KSU\n \tksu_handle_faccessat",
+                        "#ifdef CONFIG_KSU_MANUAL_HOOK\n \tksu_handle_faccessat",
+                    );
+                    fixed = fixed.replace(
                         "#ifdef CONFIG_KSU\n\tksu_handle_faccessat",
                         "#ifdef CONFIG_KSU_MANUAL_HOOK\n\tksu_handle_faccessat",
                     );

@@ -1592,7 +1592,9 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
 
     let build_variant_suffix = variant_suffix(&branch);
 
-    let mut localversion = if let Some(ref custom) = custom_localversion {
+    let mut localversion = if legacy_gcc {
+        String::new()
+    } else if let Some(ref custom) = custom_localversion {
         let custom = custom.trim();
         if is_sm8850 {
             format!("-{}", custom.trim_start_matches('-'))

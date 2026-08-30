@@ -167,7 +167,7 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2.23
         with:
           variant: sccache
-          key: kernel-build-shared-${{ env.PROJECT }}-v3
+          key: kernel-build-shared-${{ env.PROJECT }}-v4
           max-size: 5G
 
       - name: Install Dependencies

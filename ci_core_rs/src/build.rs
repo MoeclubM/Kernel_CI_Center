@@ -833,39 +833,6 @@ static inline void susfs_clear_current_proc_no_su(void) { clear_thread_flag(TIF_
             println!("Created susfs_def.h shim for non-GKI SUSFS.");
         }
     }
-    // Ensure 4.14 susfs.h defines GKI-era CMDs that ReSukiSU dispatch expects (avoid undeclared)
-    {
-        let hdr = include_target.join("susfs.h");
-        if hdr.exists() {
-            if let Ok(mut h) = fs::read_to_string(&hdr) {
-                let mut changed = false;
-                let defs = [
-                    ("#define CMD_SUSFS_ADD_SUS_PATH_LOOP", "#define CMD_SUSFS_ADD_SUS_PATH_LOOP 0x55553"),
-                    ("#define CMD_SUSFS_HIDE_SUS_MNTS_FOR_NON_SU_PROCS", "#define CMD_SUSFS_HIDE_SUS_MNTS_FOR_NON_SU_PROCS 0x55561"),
-                    ("#define CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG", "#define CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG 0x555b0"),
-                    ("#define CMD_SUSFS_ADD_OPEN_REDIRECT", "#define CMD_SUSFS_ADD_OPEN_REDIRECT 0x555c0"),
-                    ("#define CMD_SUSFS_ADD_SUS_MAP ", "#define CMD_SUSFS_ADD_SUS_MAP 0x60020"),
-                    ("#define CMD_SUSFS_ENABLE_AVC_LOG_SPOOFING", "#define CMD_SUSFS_ENABLE_AVC_LOG_SPOOFING 0x60010"),
-                    ("#define CMD_SUSFS_SHOW_ENABLED_FEATURES", "#define CMD_SUSFS_SHOW_ENABLED_FEATURES 0x555e2"),
-                    ("#define CMD_SUSFS_SHOW_VARIANT", "#define CMD_SUSFS_SHOW_VARIANT 0x555e3"),
-                    ("#define CMD_SUSFS_SHOW_VERSION", "#define CMD_SUSFS_SHOW_VERSION 0x555e1"),
-                    ("#define SUSFS_MAGIC", "#define SUSFS_MAGIC 0xFAFAFAFA"),
-                    ("#define CMD_SUSFS_ADD_SUS_KSTAT_STATICALLY", "#define CMD_SUSFS_ADD_SUS_KSTAT_STATICALLY 0x55572"),
-                    ("#define CMD_SUSFS_ENABLE_AVC_LOG_SPOOFING", "#define CMD_SUSFS_ENABLE_AVC_LOG_SPOOFING 0x60010"),
-                    ("#define CMD_SUSFS_ADD_SUS_MAP ", "#define CMD_SUSFS_ADD_SUS_MAP 0x60020"),
-                ];
-                for (pat, def) in defs {
-                    if !h.contains(pat) {
-                        h.push_str(&format!("
-{}
-", def));
-                        changed = true;
-                    }
-                }
-                if changed { let _ = fs::write(&hdr, h); println!("Extended susfs.h with GKI CMD defines."); }
-            }
-        }
-    }
     // SPRD sharkl5 (4.14 wear) diverges from upstream: faccessat hook is
     // guarded by CONFIG_KSU_MANUAL_HOOK, but upstream SUSFS 4.14 patch
     // expects CONFIG_KSU. Rewrite the cloned patch in-place when the
@@ -888,19 +855,6 @@ static inline void susfs_clear_current_proc_no_su(void) { clear_thread_flag(TIF_
                         println!("Rewrote SUSFS patch for KSU_MANUAL_HOOK (SPRD compat).");
                     }
                 }
-            }
-        }
-    }
-
-    // Enable SUSFS Kconfig in KernelSU if the enable patch exists
-    {
-        let ksu_enable_patch = temp_dir.join("kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch");
-        if ksu_enable_patch.exists() {
-            // Rewrite CONFIG_KSU -> CONFIG_KSU_MANUAL_HOOK for SPRD if needed (same as above)
-            let _ = apply_patch_with_fallbacks(&ksu_enable_patch, kernel_source_path, &["common".to_string(), "kernel_platform/common".to_string()]);
-            // Also handle case where kernel_source has KernelSU as submodule path "KernelSU/kernel"
-            if kernel_source_path.join("KernelSU/kernel/Kconfig").exists() || kernel_source_path.join("kernel/Kconfig").exists() {
-                println!("Applied SUSFS KSU Kconfig patch.");
             }
         }
     }
@@ -1461,22 +1415,9 @@ pub fn handle_build(
                     }
                 }
             }
-            // Ensure SUSFS Kconfig defaults to y when overlay succeeded
+            // Non-GKI 4.14 SUSFS: keep fs patch for hide, leave KSU_SUSFS dispatch off (GKI mismatch, see README).
             {
-                let defconfig_path = kernel_source_path.join(format!("arch/arm64/configs/{}", proj.defconfig));
-                if defconfig_path.exists() {
-                    if let Ok(mut dc) = fs::read_to_string(&defconfig_path) {
-                        dc = upsert_kconfig_entry(&dc, "CONFIG_KSU_SUSFS", "y");
-                        dc = upsert_kconfig_entry(&dc, "CONFIG_KSU_SUSFS_SUS_PATH", "y");
-                        dc = upsert_kconfig_entry(&dc, "CONFIG_KSU_SUSFS_SUS_MOUNT", "y");
-                        dc = upsert_kconfig_entry(&dc, "CONFIG_KSU_SUSFS_SUS_KSTAT", "y");
-                        dc = upsert_kconfig_entry(&dc, "CONFIG_KSU_SUSFS_SUS_MAPS", "y");
-                        dc = upsert_kconfig_entry(&dc, "CONFIG_KSU_SUSFS_TRY_UMOUNT", "y");
-                        dc = upsert_kconfig_entry(&dc, "CONFIG_KSU_SUSFS_SPOOF_UNAME", "y");
-                        let _ = fs::write(&defconfig_path, dc);
-                        println!("Enabled CONFIG_KSU_SUSFS family in defconfig.");
-                    }
-                }
+                println!("SUSFS 4.14 fs patch applied; KSU_SUSFS dispatch left disabled for 4.14 compat.");
             }
             feature_suffixes.push("susfs".to_string());
         } else {

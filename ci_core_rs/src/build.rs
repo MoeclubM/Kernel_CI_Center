@@ -1378,6 +1378,92 @@ pub fn handle_build(
         None
     };
 
+    // Stage B: inject UWS6152 stub drivers (as1509 crown) before defconfig build.
+    // Idempotent: apply_stubs handles Kconfig/Makefile + .c copy.
+    {
+        // ws_ci/build.rs runs inside the CI workspace where tools/stub_drivers is not
+        // checked out; embed the stub payload inline for portability (offline CI).
+        // For local WSL runs, prefer the real apply_stubs.py if present.
+        let stub_src = PathBuf::from("/tmp/stub_apply_fallback");
+        let _ = stub_src;
+        let try_external = PathBuf::from("/mnt/d/android/cd12x/tools/stub_drivers/apply_stubs.py");
+        if try_external.exists() {
+            let _ = run_cmd(
+                &["python3", &try_external.display().to_string(), &kernel_source_path.display().to_string()],
+                None, false,
+            );
+        } else {
+            // inline minimal: patch Kconfig/Makefile and drop .c files from embedded strings
+            // (CI center doesn't have the ws local tools/ — stubs are cheap to embed).
+            let kconfig_candidates = [
+                kernel_source_path.join("drivers/input/misc/Kconfig"),
+                kernel_source_path.join("drivers/misc/Kconfig"),
+            ];
+            if let Some(kc) = kconfig_candidates.iter().find(|p| p.exists()) {
+                if let Ok(txt) = fs::read_to_string(kc) {
+                    if !txt.contains("INPUT_AS1509_STUB") {
+                        let frag = "config INPUT_AS1509_STUB\n\ttristate \"UWS6152 as1509 crown stub (i2c@70500000)\" if INPUT\n\tdefault y if ARCH_SPRD\n\thelp\n\t  Minimal stub for AS1509 crown controller on UWS6152 w527.\nconfig INPUT_QMC6308_STUB\n\ttristate \"UWS6152 qmc6308 compass stub\"\n\tdefault n\nconfig INPUT_BD1860_STUB\n\ttristate \"UWS6152 bd1860 stub\"\n\tdefault n\nconfig INPUT_MAFP_STUB\n\ttristate \"UWS6152 microarray mafp fingerprint stub\"\n\tdefault n\n";
+                        let _ = fs::write(kc, txt + "\n" + frag);
+                        println!("Embedded AS1509 Kconfig stub into {}", kc.display());
+                    }
+                }
+            }
+            let mk_candidates = [
+                kernel_source_path.join("drivers/input/misc/Makefile"),
+                kernel_source_path.join("drivers/misc/Makefile"),
+            ];
+            if let Some(mk) = mk_candidates.iter().find(|p| p.exists()) {
+                if let Ok(txt) = fs::read_to_string(mk) {
+                    if !txt.contains("as1509_stub.o") {
+                        let frag = "obj-$(CONFIG_INPUT_AS1509_STUB) += as1509_stub.o\nobj-$(CONFIG_INPUT_QMC6308_STUB) += qmc6308_stub.o\nobj-$(CONFIG_INPUT_BD1860_STUB)  += bd1860_stub.o\nobj-$(CONFIG_INPUT_MAFP_STUB)    += mafp_stub.o\n";
+                        let _ = fs::write(mk, txt + "\n" + frag);
+                        println!("Embedded AS1509 Makefile stub into {}", mk.display());
+                    }
+                }
+            }
+            // drop stub .c files (only as1509 is default y; others deferred but ship anyway)
+            let dst_dir = if kernel_source_path.join("drivers/input/misc").exists() {
+                kernel_source_path.join("drivers/input/misc")
+            } else {
+                kernel_source_path.join("drivers/misc")
+            };
+            let as1509_src = r#"// SPDX-License-Identifier: GPL-2.0
+#include <linux/module.h>
+#include <linux/i2c.h>
+#include <linux/input.h>
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
+#include <linux/interrupt.h>
+struct as1509_stub{struct i2c_client *client;struct input_dev *input;int irq;int codes[4];};
+static irqreturn_t as1509_isr(int irq, void *dev_id){struct as1509_stub *st=dev_id;input_report_key(st->input,st->codes[0],1);input_sync(st->input);input_report_key(st->input,st->codes[0],0);input_sync(st->input);return IRQ_HANDLED;}
+static int as1509_probe(struct i2c_client *client,const struct i2c_device_id *id){struct device *dev=&client->dev;struct as1509_stub *st;int gpio,ret;dev_info(dev,"as1509 stub probe (UWS6152 w527)\n");st=devm_kzalloc(dev,sizeof(*st),GFP_KERNEL);if(!st) return -ENOMEM;st->client=client;if(of_property_read_u32(dev->of_node,"key-code-up",&st->codes[0])) st->codes[0]=0x41;if(of_property_read_u32(dev->of_node,"key-code-down",&st->codes[1])) st->codes[1]=0x42;if(of_property_read_u32(dev->of_node,"key-code-front",&st->codes[2])) st->codes[2]=0x3d;if(of_property_read_u32(dev->of_node,"key-code-back",&st->codes[3])) st->codes[3]=0x3e;st->input=devm_input_allocate_device(dev);if(!st->input) return -ENOMEM;st->input->name="as1509-crown-stub";st->input->id.bustype=BUS_I2C;__set_bit(EV_KEY,st->input->evbit);__set_bit(st->codes[0],st->input->keybit);__set_bit(st->codes[1],st->input->keybit);__set_bit(st->codes[2],st->input->keybit);__set_bit(st->codes[3],st->input->keybit);ret=input_register_device(st->input);if(ret) return ret;gpio=of_get_named_gpio(dev->of_node,"as,irq-gpio",0);if(gpio>=0){ret=devm_gpio_request_one(dev,gpio,GPIOF_IN,"as1509-irq");if(!ret){st->irq=gpio_to_irq(gpio);if(st->irq>0) ret=devm_request_threaded_irq(dev,st->irq,NULL,as1509_isr,IRQF_TRIGGER_FALLING|IRQF_ONESHOT,"as1509-stub",st);}}i2c_set_clientdata(client,st);dev_info(dev,"as1509 stub codes %02x %02x %02x %02x irq %d\n",st->codes[0],st->codes[1],st->codes[2],st->codes[3],st->irq);return 0;}
+static const struct of_device_id as1509_of_match[]={{.compatible="as,as1509_i2c"}, {}};MODULE_DEVICE_TABLE(of,as1509_of_match);
+static const struct i2c_device_id as1509_id[]={{"as1509_i2c",0},{}};MODULE_DEVICE_TABLE(i2c,as1509_id);
+static struct i2c_driver as1509_driver={.driver={.name="as1509-stub",.of_match_table=as1509_of_match,},.probe=as1509_probe,.id_table=as1509_id,};module_i2c_driver(as1509_driver);MODULE_AUTHOR("Kokuban");MODULE_DESCRIPTION("UWS6152 as1509 crown stub");MODULE_LICENSE("GPL");
+"#;
+            let qmc_src = r#"// SPDX-License-Identifier: GPL-2.0
+#include <linux/module.h>
+#include <linux/i2c.h>
+static int qmc_probe(struct i2c_client *c,const struct i2c_device_id *id){dev_info(&c->dev,"qmc6308 stub probe (deferred)\n");return 0;}static const struct of_device_id qmc_of[]={{.compatible="qmc,qmc6308"},{}};MODULE_DEVICE_TABLE(of,qmc_of);static const struct i2c_device_id qmc_id[]={{"qmc6308",0},{}};MODULE_DEVICE_TABLE(i2c,qmc_id);static struct i2c_driver qmc_drv={.driver={.name="qmc6308-stub",.of_match_table=qmc_of},.probe=qmc_probe,.id_table=qmc_id};module_i2c_driver(qmc_drv);MODULE_LICENSE("GPL");
+"#;
+            let bd_src = r#"// SPDX-License-Identifier: GPL-2.0
+#include <linux/module.h>
+#include <linux/i2c.h>
+static int bd_probe(struct i2c_client *c,const struct i2c_device_id *id){dev_info(&c->dev,"bd1860 stub probe (deferred)\n");return 0;}static const struct of_device_id bd_of[]={{.compatible="bd,bd1860"},{}};MODULE_DEVICE_TABLE(of,bd_of);static const struct i2c_device_id bd_id[]={{"bd1860",0},{}};MODULE_DEVICE_TABLE(i2c,bd_id);static struct i2c_driver bd_drv={.driver={.name="bd1860-stub",.of_match_table=bd_of},.probe=bd_probe,.id_table=bd_id};module_i2c_driver(bd_drv);MODULE_LICENSE("GPL");
+"#;
+            let mafp_src = r#"// SPDX-License-Identifier: GPL-2.0
+#include <linux/module.h>
+#include <linux/spi/spi.h>
+static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (deferred)\n");return 0;}static const struct of_device_id mafp_of[]={{.compatible="microarray,mafp"},{}};MODULE_DEVICE_TABLE(of,mafp_of);static const struct spi_device_id mafp_id[]={{"mafp",0},{}};MODULE_DEVICE_TABLE(spi,mafp_id);static struct spi_driver mafp_drv={.driver={.name="mafp-stub",.of_match_table=mafp_of},.probe=mafp_probe,.id_table=mafp_id};module_spi_driver(mafp_drv);MODULE_LICENSE("GPL");
+"#;
+            let _ = fs::write(dst_dir.join("as1509_stub.c"), as1509_src);
+            let _ = fs::write(dst_dir.join("qmc6308_stub.c"), qmc_src);
+            let _ = fs::write(dst_dir.join("bd1860_stub.c"), bd_src);
+            let _ = fs::write(dst_dir.join("mafp_stub.c"), mafp_src);
+            println!("Embedded stub .c files into {}", dst_dir.display());
+        }
+    }
+
     if let Some((url, arg)) = setup_url {
         let cmd = format!("curl -LSs '{}' | bash -s {}", url, arg);
         run_cmd(&["bash", "-c", &cmd], Some(&kernel_source_path), false)?;
@@ -1590,11 +1676,18 @@ pub fn handle_build(
     }
     // SPRD wear (sharkl5): stock disables DEVTMPFS, but by-name/PARTNAME uevent
     // needs DEVTMPFS. Keep enabled for p30 hardcode compatibility and pstore debugging.
+    // Full essential set per plan §3A: MMC/GPT/LOOP/PSTORE.
     if legacy_gcc {
         for (k, v) in [
+            ("MMC", true),
+            ("MMC_BLOCK", true),
+            ("MMC_SPRD_SDHCR11", true),
+            ("MMC_SDHCI", false),
             ("DEVTMPFS", true),
             ("DEVTMPFS_MOUNT", true),
             ("EFI_PARTITION", true),
+            ("MSDOS_PARTITION", true),
+            ("BLK_DEV_LOOP", true),
             ("PSTORE", true),
             ("PSTORE_CONSOLE", true),
             ("PSTORE_RAM", true),

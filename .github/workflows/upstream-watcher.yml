@@ -25,7 +25,15 @@ jobs:
           
       - name: Check Upstream
         id: watcher
-        run: ./kokuban_ci_core watch
+        run: |
+          ./kokuban_ci_core watch
+          if [ -f "$GITHUB_OUTPUT" ]; then
+            raw_matrix=$(grep '^matrix=' "$GITHUB_OUTPUT" | head -n1 | cut -d= -f2-)
+            if [ -n "$raw_matrix" ]; then
+              clean_matrix=$(echo "$raw_matrix" | jq -c '[.[] | select(.project | endswith("_stealth") | not)]')
+              echo "matrix=$clean_matrix" >> "$GITHUB_OUTPUT"
+            fi
+          fi
         
       - name: Commit Updated Tracker
         if: steps.watcher.outputs.found_updates == 'true'

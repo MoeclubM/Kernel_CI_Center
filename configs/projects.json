@@ -259,5 +259,43 @@
       "fs_patch_dir": "kernel_patches/fs",
       "include_linux_patch_dir": "kernel_patches/include/linux"
     }
+  },
+  "mi17_sm8850_stealth": {
+    "repo": "MoeclubM/android_kernel_xiaomi_sm8850",
+    "defconfig": "gki_defconfig",
+    "localversion_base": "-android16-6-gb1493ec68d4a-abogki514973465-4k",
+    "supported_ksu": [
+      "resukisu"
+    ],
+    "version_method": "file",
+    "toolchain_urls": [
+      "https://github.com/cctv18/oneplus_sm8650_toolchain/releases/download/LLVM-Clang19-r536225/clang-r536225.zip",
+      "https://github.com/cctv18/oneplus_sm8650_toolchain/releases/download/LLVM-Clang19-r536225/rust.zip",
+      "https://github.com/cctv18/oneplus_sm8650_toolchain/releases/download/LLVM-Clang19-r536225/build-tools.zip",
+      "https://github.com/rust-lang/rust-bindgen/releases/download/v0.69.5/bindgen-cli-x86_64-unknown-linux-gnu.tar.xz"
+    ],
+    "toolchain_path_prefix": "",
+    "toolchain_path_exports": [
+      "bin",
+      "build-tools/bin",
+      "bindgen-cli-x86_64-unknown-linux-gnu"
+    ],
+    "lto": "none",
+    "anykernel_config": "canoe",
+    "zip_name_prefix": "Mi17_Kernel_StockStealth",
+    "susfs": {
+      "repo": "https://gitlab.com/simonpunk/susfs4ksu.git",
+      "branch": "gki-android16-6.12",
+      "patch_path": "kernel_patches/50_add_susfs_in_gki-android16-6.12.patch",
+      "fs_patch_dir": "kernel_patches/fs",
+      "include_linux_patch_dir": "kernel_patches/include/linux"
+    },
+    "bbg": {
+      "setup_url": "https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh"
+    },
+    "readme_placeholders": {
+      "DEVICE_NAME_CN": "小米 17 系列 (StockStealth 原厂伪装版)",
+      "DEVICE_NAME_EN": "Xiaomi 17 Series (StockStealth)"
+    }
   }
 }

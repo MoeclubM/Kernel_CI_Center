@@ -47,7 +47,7 @@ jobs:
             echo "Unsupported ksu_type: $KSU_TYPE"
             exit 1
           fi
-          SETUP_URL="https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh"
+          SETUP_URL="https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh"
 
           echo "Updating projects with commit message: '$COMMIT_MESSAGE'"
           

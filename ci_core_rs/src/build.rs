@@ -1371,7 +1371,7 @@ pub fn handle_build(
 
     let setup_url = if is_resukisu {
         Some((
-            "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh",
+            "https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh",
             resukisu_setup_arg,
         ))
     } else {

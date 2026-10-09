@@ -84,9 +84,9 @@ pub struct AnyKernelConfig {
 
 pub const KSU_CONFIG_JSON: &str = r#"{
     "resukisu": {
-        "repo": "https://github.com/ReSukiSU/ReSukiSU.git",
+        "repo": "https://github.com/Baka-SU/BakaSU.git",
         "branch": "main",
-        "setup_url": "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh",
+        "setup_url": "https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh",
         "setup_args": ["main"]
     }
 }"#;

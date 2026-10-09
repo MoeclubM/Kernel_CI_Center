@@ -48,7 +48,7 @@ on:
         required: false
         default: ''
       resukisu_setup_arg:
-        description: 'ReSukiSU setup.sh argument override'
+        description: 'BakaSU setup.sh argument override'
         type: string
         required: false
         default: ''
@@ -128,10 +128,10 @@ jobs:
           should_build="true"
 
           if [ "$event" = "schedule" ]; then
-            upstream_hash=$(git ls-remote https://github.com/ReSukiSU/ReSukiSU.git refs/heads/main | head -n1 | awk '{print substr($1, 1, 7)}')
+            upstream_hash=$(git ls-remote https://github.com/Baka-SU/BakaSU.git refs/heads/main | head -n1 | awk '{print substr($1, 1, 7)}')
             current_tracked=$(jq -r '.resukisu // ""' configs/upstream_commits.json 2>/dev/null || echo "")
             if [ -n "$upstream_hash" ] && [ "$upstream_hash" != "$current_tracked" ]; then
-              echo "Upstream ReSukiSU updated: $current_tracked -> $upstream_hash"
+              echo "Upstream BakaSU updated: $current_tracked -> $upstream_hash"
               gh release download ci-core-latest -p "kokuban_ci_core" --clobber
               chmod +x kokuban_ci_core
               ./kokuban_ci_core update --token "$GH_TOKEN" --project "mi17_sm8850" --variant "resukisu" --commit-id "$upstream_hash"
@@ -464,7 +464,7 @@ jobs:
           ### 📱 小米 17 系列内核双版本发布 (Dual Build)
 
           * **发布时间**：@DATE_TAG@
-          * **集成特性**：ReSukiSU + SuSFS + Re-Kernel + TCP Brutal + ADIOS
+          * **集成特性**：BakaSU + SuSFS + Re-Kernel + TCP Brutal + ADIOS
 
           ---
 
@@ -494,7 +494,7 @@ jobs:
           ### ⌚ UWS6152 智能手表内核发布 (w527 / CD12X)
 
           * **发布时间**：@DATE_TAG@
-          * **集成特性**：ReSukiSU + 硬件内联加密 + 官方原厂硬件图层加速 + 触控/指纹/传感器驱动完整对齐
+          * **集成特性**：BakaSU + 硬件内联加密 + 官方原厂硬件图层加速 + 触控/指纹/传感器驱动完整对齐
           EOF
             sed -i "s|@DATE_TAG@|${DATE_TAG}|g" release_notes_uws.md
             echo "Creating release for UWS6152..."

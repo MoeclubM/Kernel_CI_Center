@@ -39,7 +39,7 @@ jobs:
           set -euo pipefail
 
           if [ "${{ inputs.commit_id }}" == "latest" ]; then
-            repo="https://github.com/ReSukiSU/ReSukiSU.git"
+            repo="https://github.com/Baka-SU/BakaSU.git"
             branch="main"
             echo "COMMIT_ID=$(git ls-remote "$repo" "$branch" | cut -c1-7)" >> "$GITHUB_ENV"
           else

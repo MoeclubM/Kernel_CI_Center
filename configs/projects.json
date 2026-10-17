@@ -149,6 +149,9 @@
       "patch_path": "kernel_patches/50_add_susfs_in_kernel-4.14.patch",
       "fs_patch_dir": "kernel_patches/fs",
       "include_linux_patch_dir": "kernel_patches/include/linux"
+    },
+    "bbg": {
+      "setup_url": "https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh"
     }
   },
   "uws6152_cd12m": {
@@ -258,6 +261,9 @@
       "patch_path": "kernel_patches/50_add_susfs_in_kernel-4.14.patch",
       "fs_patch_dir": "kernel_patches/fs",
       "include_linux_patch_dir": "kernel_patches/include/linux"
+    },
+    "bbg": {
+      "setup_url": "https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh"
     }
   },
   "mi17_sm8850_stealth": {

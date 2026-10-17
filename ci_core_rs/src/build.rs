@@ -86,11 +86,8 @@ fn download_single_toolchain(
             .file_name()
             .and_then(|name| name.to_str())
             .unwrap_or("toolchain");
-        let tmp_path = cache_path.with_file_name(format!(
-            "{}.tmp-{}",
-            cache_file_name,
-            std::process::id()
-        ));
+        let tmp_path =
+            cache_path.with_file_name(format!("{}.tmp-{}", cache_file_name, std::process::id()));
         let _ = fs::remove_file(&tmp_path);
         let tmp_path_str = tmp_path
             .to_str()
@@ -840,7 +837,8 @@ static inline void susfs_clear_current_proc_no_su(void) { clear_thread_flag(TIF_
     // fs/open.c:389 applies.
     if kernel_source_path.join("fs/open.c").exists() {
         if let Ok(open_c) = fs::read_to_string(kernel_source_path.join("fs/open.c")) {
-            if open_c.contains("CONFIG_KSU_MANUAL_HOOK") && open_c.contains("ksu_handle_faccessat") {
+            if open_c.contains("CONFIG_KSU_MANUAL_HOOK") && open_c.contains("ksu_handle_faccessat")
+            {
                 if let Ok(patch_text) = fs::read_to_string(&patch_path) {
                     let mut fixed = patch_text.replace(
                         "#ifdef CONFIG_KSU\n \tksu_handle_faccessat",
@@ -877,14 +875,23 @@ static inline void susfs_clear_current_proc_no_su(void) { clear_thread_flag(TIF_
                 // when the upstream patch couldn't apply (SPRD layout).
                 // Heuristic: if faccessat does not yet contain susfs, splice it
                 let marker = "ksu_handle_faccessat(&dfd, &filename, &mode, NULL);";
-                if open_c.contains(marker) && !open_c.contains("susfs_sus_path_by_filename(fname, &error, SYSCALL_FAMILY_ALL_ENOENT)") {
+                if open_c.contains(marker)
+                    && !open_c.contains(
+                        "susfs_sus_path_by_filename(fname, &error, SYSCALL_FAMILY_ALL_ENOENT)",
+                    )
+                {
                     let needle = "#ifdef CONFIG_KSU_MANUAL_HOOK\n\tksu_handle_faccessat(&dfd, &filename, &mode, NULL);\n#endif";
                     if open_c.contains(needle) {
                         let pre_decl = "#ifdef CONFIG_KSU_SUSFS_SUS_PATH\n\tstruct filename* fname;\n\tint status;\n\tint error;\n#endif\n\n";
                         let post_fence = "\n\n#ifdef CONFIG_KSU_SUSFS_SUS_PATH\n\tfname = getname_safe(filename);\n\tstatus = susfs_sus_path_by_filename(fname, &error, SYSCALL_FAMILY_ALL_ENOENT);\n\tputname_safe(fname);\n\n\tif (status) {\n\t\treturn error;\n\t}\n#endif";
-                        if !open_c.contains("susfs_sus_path_by_filename(fname, &error, SYSCALL_FAMILY_ALL_ENOENT)") {
+                        if !open_c.contains(
+                            "susfs_sus_path_by_filename(fname, &error, SYSCALL_FAMILY_ALL_ENOENT)",
+                        ) {
                             let decl_needle = "unsigned int lookup_flags = LOOKUP_FOLLOW;\n#ifdef CONFIG_KSU_MANUAL_HOOK";
-                            let decl_repl = "unsigned int lookup_flags = LOOKUP_FOLLOW;\n".to_string() + &pre_decl + "#ifdef CONFIG_KSU_MANUAL_HOOK";
+                            let decl_repl = "unsigned int lookup_flags = LOOKUP_FOLLOW;\n"
+                                .to_string()
+                                + &pre_decl
+                                + "#ifdef CONFIG_KSU_MANUAL_HOOK";
                             if open_c.contains(decl_needle) {
                                 open_c = open_c.replace(decl_needle, &decl_repl);
                             }
@@ -1389,8 +1396,13 @@ pub fn handle_build(
         let try_external = PathBuf::from("/mnt/d/android/cd12x/tools/stub_drivers/apply_stubs.py");
         if try_external.exists() {
             let _ = run_cmd(
-                &["python3", &try_external.display().to_string(), &kernel_source_path.display().to_string()],
-                None, false,
+                &[
+                    "python3",
+                    &try_external.display().to_string(),
+                    &kernel_source_path.display().to_string(),
+                ],
+                None,
+                false,
             );
         } else {
             // inline minimal: patch Kconfig/Makefile and drop .c files from embedded strings
@@ -1479,7 +1491,8 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
             apply_susfs_overlay(&kernel_source_path, susfs)?;
             // SUSFS on SPRD 4.14 keep Manual Hook (inline sites missing) -- turn check error into warning
             {
-                let hook_check = kernel_source_path.join("KernelSU/kernel/tools/inline_hook_check.mk");
+                let hook_check =
+                    kernel_source_path.join("KernelSU/kernel/tools/inline_hook_check.mk");
                 if hook_check.exists() {
                     if let Ok(mut c) = fs::read_to_string(&hook_check) {
                         let orig = c.clone();
@@ -1493,7 +1506,8 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
             }
             // Pin Manual Hook when SUSFS is on
             {
-                let dc_path2 = kernel_source_path.join(format!("arch/arm64/configs/{}", proj.defconfig));
+                let dc_path2 =
+                    kernel_source_path.join(format!("arch/arm64/configs/{}", proj.defconfig));
                 if dc_path2.exists() {
                     if let Ok(mut dc2) = fs::read_to_string(&dc_path2) {
                         dc2 = upsert_kconfig_entry(&dc2, "CONFIG_KSU_MANUAL_HOOK", "y");
@@ -1503,7 +1517,9 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
             }
             // Non-GKI 4.14 SUSFS: keep fs patch for hide, leave KSU_SUSFS dispatch off (GKI mismatch, see README).
             {
-                println!("SUSFS 4.14 fs patch applied; KSU_SUSFS dispatch left disabled for 4.14 compat.");
+                println!(
+                    "SUSFS 4.14 fs patch applied; KSU_SUSFS dispatch left disabled for 4.14 compat."
+                );
             }
             feature_suffixes.push("susfs".to_string());
         } else {
@@ -1531,11 +1547,7 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
     .to_string();
 
     let mut make_args = if legacy_gcc {
-        vec![
-            "O=out",
-            "ARCH=arm64",
-            "SUBARCH=arm64",
-        ]
+        vec!["O=out", "ARCH=arm64", "SUBARCH=arm64"]
     } else {
         vec![
             "O=out",
@@ -1672,7 +1684,10 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
         let dtc_src = kernel_source_path.join("scripts/dtc/dtc.c");
         if dtc_src.exists() {
             if let Ok(mut c) = fs::read_to_string(&dtc_src) {
-                c = c.replace("dt_to_yaml(dti, outf);", "die(\"yaml format not supported\\n\");");
+                c = c.replace(
+                    "dt_to_yaml(dti, outf);",
+                    "die(\"yaml format not supported\\n\");",
+                );
                 let _ = fs::write(&dtc_src, c);
             }
         }
@@ -1894,13 +1909,7 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
                 run_cmd_with_env(&refs, Some(&kernel_source_path), &build_env)?;
 
                 run_cmd_with_env(
-                    &[
-                        "make",
-                        "O=out",
-                        &m_arg,
-                        "modules_install",
-                        &mod_install_arg,
-                    ],
+                    &["make", "O=out", &m_arg, "modules_install", &mod_install_arg],
                     Some(&kernel_source_path),
                     &build_env,
                 )?;

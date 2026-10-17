@@ -128,7 +128,7 @@ enum Commands {
         #[arg(long, allow_hyphen_values = true)]
         custom_localversion: Option<String>,
         #[arg(long, allow_hyphen_values = true)]
-        resukisu_setup_arg: Option<String>,
+        bakasu_setup_arg: Option<String>,
         #[arg(long, action = clap::ArgAction::Set)]
         apply_susfs: bool,
         #[arg(long, action = clap::ArgAction::Set)]
@@ -146,7 +146,7 @@ enum Commands {
         #[arg(long, allow_hyphen_values = true)]
         custom_localversion: Option<String>,
         #[arg(long, allow_hyphen_values = true)]
-        resukisu_setup_arg: Option<String>,
+        bakasu_setup_arg: Option<String>,
         #[arg(long, action = clap::ArgAction::Set)]
         apply_susfs: Option<bool>,
         #[arg(long, action = clap::ArgAction::SetTrue)]
@@ -305,7 +305,7 @@ fn main() -> Result<()> {
             branch,
             do_release,
             custom_localversion,
-            resukisu_setup_arg,
+            bakasu_setup_arg,
             apply_susfs,
             apply_bbg,
         } => build::handle_build(
@@ -313,7 +313,7 @@ fn main() -> Result<()> {
             branch,
             do_release,
             custom_localversion,
-            resukisu_setup_arg,
+            bakasu_setup_arg,
             apply_susfs,
             apply_bbg,
         ),
@@ -323,7 +323,7 @@ fn main() -> Result<()> {
             variant,
             do_release,
             custom_localversion,
-            resukisu_setup_arg,
+            bakasu_setup_arg,
             apply_susfs,
             with_susfs,
             no_susfs,
@@ -358,7 +358,7 @@ fn main() -> Result<()> {
                 variant,
                 do_release,
                 custom_localversion,
-                resukisu_setup_arg,
+                bakasu_setup_arg,
                 apply_susfs: resolved_susfs,
                 apply_bbg: resolved_bbg,
                 local_root: local_root.or(settings.local_root),
@@ -423,10 +423,10 @@ fn build_project_matrix_entries(
 
     for variant in raw_supported {
         let normalized = normalize_variant_name(&variant);
-        let entry = if normalized == "resukisu" {
+        let entry = if normalized == "bakasu" {
             HashMap::from([
                 ("project".to_string(), project_key.to_string()),
-                ("branch".to_string(), "resukisu".to_string()),
+                ("branch".to_string(), "bakasu".to_string()),
                 ("ksu_variant".to_string(), "default".to_string()),
             ])
         } else {
@@ -513,7 +513,7 @@ fn handle_add(options: AddOptions) -> Result<()> {
         defconfig: options.defconfig,
         localversion_base: options.localversion,
         lto: None,
-        supported_ksu: Some(vec!["resukisu".to_string()]),
+        supported_ksu: Some(vec!["bakasu".to_string()]),
         toolchain_urls: None,
         toolchain_sha256: None,
         toolchain_path_prefix: if options.toolchain_prefix.is_empty() {
@@ -595,7 +595,7 @@ fn handle_setup(
         )?;
 
         let readme_content = process_readme(&readme_tpl, &proj, &repo_url, &readme_language);
-        let target_branches = vec!["main", "resukisu"];
+        let target_branches = vec!["main", "bakasu"];
 
         let remote_out =
             run_cmd(&["git", "branch", "-r"], Some(&target_dir), true)?.unwrap_or_default();
@@ -607,24 +607,26 @@ fn handle_setup(
         for branch in target_branches {
             let branch_exists = remote_branches.contains(&branch);
 
-            if branch == "resukisu" && !branch_exists && remote_branches.contains(&"sukisuultra") {
+            let legacy_branch = ["resukisu", "sukisuultra"]
+                .into_iter()
+                .find(|legacy| remote_branches.contains(legacy));
+            if branch == "bakasu"
+                && !branch_exists
+                && let Some(legacy_branch) = legacy_branch
+            {
                 run_cmd(
-                    &["git", "checkout", "sukisuultra"],
+                    &["git", "checkout", legacy_branch],
+                    Some(&target_dir),
+                    false,
+                )?;
+                run_cmd(&["git", "branch", "-m", "bakasu"], Some(&target_dir), false)?;
+                run_cmd(
+                    &["git", "push", "origin", "-u", "bakasu"],
                     Some(&target_dir),
                     false,
                 )?;
                 run_cmd(
-                    &["git", "branch", "-m", "resukisu"],
-                    Some(&target_dir),
-                    false,
-                )?;
-                run_cmd(
-                    &["git", "push", "origin", "-u", "resukisu"],
-                    Some(&target_dir),
-                    false,
-                )?;
-                run_cmd(
-                    &["git", "push", "origin", "--delete", "sukisuultra"],
+                    &["git", "push", "origin", "--delete", legacy_branch],
                     Some(&target_dir),
                     false,
                 )?;
@@ -803,6 +805,9 @@ fn handle_watch() -> Result<()> {
         HashMap::new()
     };
 
+    if let Some(hash) = track_data.remove("resukisu") {
+        track_data.entry("bakasu".to_string()).or_insert(hash);
+    }
     track_data.remove("sukisuultra");
     track_data.remove("ksu");
     track_data.remove("mksu");

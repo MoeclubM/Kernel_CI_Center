@@ -55,8 +55,10 @@ pub struct BbgConfig {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GlobalConfig {
     pub broadcast_channel: Option<String>,
-    pub resukisu_chat_id: Option<String>,
-    pub resukisu_topic_id: Option<i32>,
+    #[serde(alias = "resukisu_chat_id")]
+    pub bakasu_chat_id: Option<String>,
+    #[serde(alias = "resukisu_topic_id")]
+    pub bakasu_topic_id: Option<i32>,
 }
 
 pub type ProjectsMap = HashMap<String, serde_json::Value>;
@@ -83,7 +85,7 @@ pub struct AnyKernelConfig {
 }
 
 pub const KSU_CONFIG_JSON: &str = r#"{
-    "resukisu": {
+    "bakasu": {
         "repo": "https://github.com/Baka-SU/BakaSU.git",
         "branch": "main",
         "setup_url": "https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh",

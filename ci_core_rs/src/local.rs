@@ -87,7 +87,7 @@ pub struct LocalBuildOptions {
     pub variant: String,
     pub do_release: bool,
     pub custom_localversion: Option<String>,
-    pub resukisu_setup_arg: Option<String>,
+    pub bakasu_setup_arg: Option<String>,
     pub apply_susfs: bool,
     pub apply_bbg: bool,
     pub local_root: Option<PathBuf>,
@@ -466,8 +466,8 @@ fn run_build_command(
     );
     add_optional_arg(
         &mut command,
-        "--resukisu-setup-arg",
-        options.resukisu_setup_arg.as_deref(),
+        "--bakasu-setup-arg",
+        options.bakasu_setup_arg.as_deref(),
     );
 
     if let Some(parent) = log_path.parent() {
@@ -883,8 +883,8 @@ mod tests {
     #[test]
     fn sanitizes_path_components() {
         assert_eq!(
-            sanitize_path_component("s25/sm8750 resukisu"),
-            "s25-sm8750-resukisu"
+            sanitize_path_component("s25/sm8750 bakasu"),
+            "s25-sm8750-bakasu"
         );
         assert_eq!(sanitize_path_component("///"), "default");
     }

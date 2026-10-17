@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use crate::config::{AnyKernelConfig, BbgConfig, ProjectConfig, SusfsConfig};
 use crate::utils::{
-    cache_file_name, command_exists, env_flag, file_sha256, handle_notify, is_resukisu_variant,
+    cache_file_name, command_exists, env_flag, file_sha256, handle_notify, is_bakasu_variant,
     load_anykernel_config, load_project, run_cmd, run_cmd_with_env, set_github_output,
     url_file_name, variant_suffix,
 };
@@ -1136,7 +1136,7 @@ pub fn handle_build(
     branch: String,
     do_release: bool,
     custom_localversion: Option<String>,
-    resukisu_setup_arg: Option<String>,
+    bakasu_setup_arg: Option<String>,
     apply_susfs: bool,
     apply_bbg: bool,
 ) -> Result<()> {
@@ -1357,22 +1357,22 @@ pub fn handle_build(
         );
     }
 
-    let resukisu_setup_arg = resukisu_setup_arg
+    let bakasu_setup_arg = bakasu_setup_arg
         .as_deref()
         .map(str::trim)
         .filter(|arg| !arg.is_empty())
         .unwrap_or("main");
 
-    let is_resukisu = is_resukisu_variant(&branch)
+    let is_bakasu = is_bakasu_variant(&branch)
         || proj
             .supported_ksu
             .as_ref()
-            .map_or(false, |k| k.iter().any(|s| is_resukisu_variant(s)));
+            .map_or(false, |k| k.iter().any(|s| is_bakasu_variant(s)));
 
-    let setup_url = if is_resukisu {
+    let setup_url = if is_bakasu {
         Some((
             "https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh",
-            resukisu_setup_arg,
+            bakasu_setup_arg,
         ))
     } else {
         None
@@ -1471,7 +1471,7 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
 
     let mut feature_suffixes = Vec::new();
     if apply_susfs {
-        if is_resukisu {
+        if is_bakasu {
             let susfs = proj
                 .susfs
                 .as_ref()
@@ -1508,7 +1508,7 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
             feature_suffixes.push("susfs".to_string());
         } else {
             println!(
-                "Skipping SuSFS for branch '{}': SuSFS is only enabled for ReSukiSU builds.",
+                "Skipping SuSFS for branch '{}': SuSFS is only enabled for BakaSU builds.",
                 branch
             );
         }

@@ -1,15 +1,15 @@
 {
   "_globals": {
     "broadcast_channel": "@BLBDSBD",
-    "resukisu_chat_id": "@ReSukiSU",
-    "resukisu_topic_id": 36
+    "bakasu_chat_id": "@ReSukiSU",
+    "bakasu_topic_id": 36
   },
   "mi17_sm8850": {
     "repo": "MoeclubM/android_kernel_xiaomi_sm8850",
     "defconfig": "gki_defconfig",
     "localversion_base": "-android16-6",
     "supported_ksu": [
-      "resukisu"
+      "bakasu"
     ],
     "version_method": "file",
     "toolchain_urls": [
@@ -49,7 +49,7 @@
     "build_profile": "gcc_legacy",
     "cross_compile": "aarch64-linux-android-",
     "supported_ksu": [
-      "resukisu"
+      "bakasu"
     ],
     "readme_placeholders": {
       "DEVICE_NAME_CN": "UWS6152 智能手表 (w527/cd12x)",
@@ -158,7 +158,7 @@
     "build_profile": "gcc_legacy",
     "cross_compile": "aarch64-linux-android-",
     "supported_ksu": [
-      "resukisu"
+      "bakasu"
     ],
     "readme_placeholders": {
       "DEVICE_NAME_CN": "UWS6152 智能手表 (CD12M)",
@@ -265,7 +265,7 @@
     "defconfig": "gki_defconfig",
     "localversion_base": "-android16-6-gb1493ec68d4a-abogki514973465-4k",
     "supported_ksu": [
-      "resukisu"
+      "bakasu"
     ],
     "version_method": "file",
     "toolchain_urls": [

@@ -11,7 +11,7 @@ on:
         description: 'Variant (KernelSU Type)'
         required: true
         type: choice
-        options: [resukisu]
+        options: [bakasu]
       commit_id:
         description: 'Commit Short Hash (Optional, defaults to latest)'
         required: false

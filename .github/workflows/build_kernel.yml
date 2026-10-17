@@ -53,9 +53,9 @@ on:
         required: false
         default: ''
       apply_susfs:
-        description: 'Apply SuSFS dynamically during build'
+        description: 'Apply SuSFS dynamically during build (upstream BakaSU has suspended SuSFS)'
         type: boolean
-        default: true
+        default: false
       apply_bbg:
         description: 'Apply Baseband Guard dynamically during build'
         type: boolean
@@ -93,7 +93,7 @@ jobs:
             variant="default"
             custom_localversion=""
             bakasu_setup_arg=""
-            apply_susfs="true"
+            apply_susfs="false"
             apply_bbg="false"
           elif [ "$event" = "repository_dispatch" ]; then
             project="${{ github.event.client_payload.project || 'mi17_sm8850' }}"
@@ -104,7 +104,7 @@ jobs:
             variant="${{ github.event.client_payload.ksu_variant || 'default' }}"
             custom_localversion="${{ github.event.client_payload.custom_localversion || '' }}"
             bakasu_setup_arg="${{ github.event.client_payload.bakasu_setup_arg || '' }}"
-            apply_susfs="${{ github.event.client_payload.apply_susfs || 'true' }}"
+            apply_susfs="${{ github.event.client_payload.apply_susfs || 'false' }}"
             apply_bbg="${{ github.event.client_payload.apply_bbg || 'false' }}"
           else
             project="${{ inputs.project }}"
@@ -173,7 +173,7 @@ jobs:
                     custom_localversion: "",
                     bakasu_setup_arg: $rsa,
                     stealth: false,
-                    apply_susfs: true,
+                    apply_susfs: false,
                     apply_bbg: false
                   },
                   {
@@ -184,7 +184,7 @@ jobs:
                     custom_localversion: "-android16-6-gb1493ec68d4a-abogki514973465-4k",
                     bakasu_setup_arg: $rsa,
                     stealth: true,
-                    apply_susfs: true,
+                    apply_susfs: false,
                     apply_bbg: false
                   },
                   {
@@ -458,13 +458,14 @@ jobs:
           # 1. Release Mi17 packages if present
           mi17_pkgs=(release_pkgs/Mi17_Kernel*.zip)
           if [ -e "${mi17_pkgs[0]}" ]; then
-            TAG="Mi17_Kernel-BakaSU-susfs-${DATE_TAG}"
-            TITLE="Mi17 Kernel BakaSU-susfs Dual Build (${DATE_TAG})"
+            TAG="Mi17_Kernel-BakaSU-${DATE_TAG}"
+            TITLE="Mi17 Kernel BakaSU Dual Build (${DATE_TAG})"
             cat << 'EOF' > release_notes_mi17.md
           ### 📱 小米 17 系列内核双版本发布 (Dual Build)
 
           * **发布时间**：@DATE_TAG@
-          * **集成特性**：BakaSU + SuSFS + Re-Kernel + TCP Brutal + ADIOS
+          * **集成特性**：BakaSU + Re-Kernel + TCP Brutal + ADIOS
+          * **SuSFS**：上游 BakaSU 已暂停支持，本次未启用（待 simonpunk 同步后恢复）
 
           ---
 

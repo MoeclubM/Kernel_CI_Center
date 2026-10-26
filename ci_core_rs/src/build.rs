@@ -530,82 +530,6 @@ fn apply_anykernel_config(anykernel_dir: &Path, config: &AnyKernelConfig) -> Res
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    #[test]
-    fn applies_anykernel_config_to_upstream_template() {
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let temp_dir = std::env::temp_dir().join(format!("ak3-config-test-{unique}"));
-        fs::create_dir_all(&temp_dir).unwrap();
-
-        let template = r#"properties() { '
-kernel.string=ExampleKernel by osm0sis @ xda-developers
-do.devicecheck=1
-do.modules=0
-do.systemless=1
-do.cleanup=1
-do.cleanuponabort=0
-device.name1=maguro
-supported.versions=
-supported.patchlevels=
-supported.vendorpatchlevels=
-'; } # end properties
-
-# boot shell variables
-BLOCK=/dev/block/platform/omap/omap_hsmmc.0/by-name/boot;
-IS_SLOT_DEVICE=0;
-RAMDISK_COMPRESSION=auto;
-PATCH_VBMETA_FLAG=auto;
-
-# boot install
-dump_boot; # use split_boot to skip ramdisk unpack, e.g. for devices with init_boot ramdisk
-backup_file init.rc;
-write_boot; # use flash_boot to skip ramdisk repack, e.g. for devices with init_boot ramdisk
-## end boot install
-"#;
-        fs::write(temp_dir.join("anykernel.sh"), template).unwrap();
-
-        let config = AnyKernelConfig {
-            kernel_string: "S23-Knox-Disabled-Kernel-Kokuban".to_string(),
-            device_check: true,
-            modules: false,
-            systemless: true,
-            cleanup: true,
-            cleanup_on_abort: false,
-            device_names: vec!["dm3q".to_string(), "dm2q".to_string(), "dm1q".to_string()],
-            supported_versions: Some(String::new()),
-            supported_patchlevels: Some(String::new()),
-            supported_vendorpatchlevels: Some(String::new()),
-            block: "/dev/block/by-name/boot".to_string(),
-            is_slot_device: false,
-            ramdisk_compression: Some("auto".to_string()),
-            patch_vbmeta_flag: Some("auto".to_string()),
-            boot_setup: Some("split_boot".to_string()),
-            boot_finalize: Some("flash_boot".to_string()),
-        };
-
-        apply_anykernel_config(&temp_dir, &config).unwrap();
-        let rendered = fs::read_to_string(temp_dir.join("anykernel.sh")).unwrap();
-
-        assert!(rendered.contains("kernel.string=S23-Knox-Disabled-Kernel-Kokuban"));
-        assert!(rendered.contains("device.name1=dm3q"));
-        assert!(rendered.contains("device.name3=dm1q"));
-        assert!(rendered.contains("BLOCK=/dev/block/by-name/boot;"));
-        assert!(rendered.contains("split_boot; # use split_boot to skip ramdisk unpack"));
-        assert!(rendered.contains("flash_boot; # use flash_boot to skip ramdisk repack"));
-        assert!(!rendered.contains("backup_file init.rc;"));
-        assert!(!rendered.contains("ExampleKernel by osm0sis"));
-
-        fs::remove_dir_all(&temp_dir).unwrap();
-    }
-}
-
 /// Recursively copy every *.ko found under `source` into the flat `dest` directory.
 /// Symlinks (modules_install creates "build"/"source" links) are never followed.
 fn collect_kernel_modules(source: &Path, dest: &Path) -> Result<()> {
@@ -835,25 +759,23 @@ static inline void susfs_clear_current_proc_no_su(void) { clear_thread_flag(TIF_
     // expects CONFIG_KSU. Rewrite the cloned patch in-place when the
     // checked-out tree uses the MANUAL_HOOK spelling so the hunk at
     // fs/open.c:389 applies.
-    if kernel_source_path.join("fs/open.c").exists() {
-        if let Ok(open_c) = fs::read_to_string(kernel_source_path.join("fs/open.c")) {
-            if open_c.contains("CONFIG_KSU_MANUAL_HOOK") && open_c.contains("ksu_handle_faccessat")
-            {
-                if let Ok(patch_text) = fs::read_to_string(&patch_path) {
-                    let mut fixed = patch_text.replace(
-                        "#ifdef CONFIG_KSU\n \tksu_handle_faccessat",
-                        "#ifdef CONFIG_KSU_MANUAL_HOOK\n \tksu_handle_faccessat",
-                    );
-                    fixed = fixed.replace(
-                        "#ifdef CONFIG_KSU\n\tksu_handle_faccessat",
-                        "#ifdef CONFIG_KSU_MANUAL_HOOK\n\tksu_handle_faccessat",
-                    );
-                    if fixed != patch_text {
-                        let _ = fs::write(&patch_path, fixed);
-                        println!("Rewrote SUSFS patch for KSU_MANUAL_HOOK (SPRD compat).");
-                    }
-                }
-            }
+    if kernel_source_path.join("fs/open.c").exists()
+        && let Ok(open_c) = fs::read_to_string(kernel_source_path.join("fs/open.c"))
+        && open_c.contains("CONFIG_KSU_MANUAL_HOOK")
+        && open_c.contains("ksu_handle_faccessat")
+        && let Ok(patch_text) = fs::read_to_string(&patch_path)
+    {
+        let mut fixed = patch_text.replace(
+            "#ifdef CONFIG_KSU\n \tksu_handle_faccessat",
+            "#ifdef CONFIG_KSU_MANUAL_HOOK\n \tksu_handle_faccessat",
+        );
+        fixed = fixed.replace(
+            "#ifdef CONFIG_KSU\n\tksu_handle_faccessat",
+            "#ifdef CONFIG_KSU_MANUAL_HOOK\n\tksu_handle_faccessat",
+        );
+        if fixed != patch_text {
+            let _ = fs::write(&patch_path, fixed);
+            println!("Rewrote SUSFS patch for KSU_MANUAL_HOOK (SPRD compat).");
         }
     }
 
@@ -890,13 +812,13 @@ static inline void susfs_clear_current_proc_no_su(void) { clear_thread_flag(TIF_
                             let decl_needle = "unsigned int lookup_flags = LOOKUP_FOLLOW;\n#ifdef CONFIG_KSU_MANUAL_HOOK";
                             let decl_repl = "unsigned int lookup_flags = LOOKUP_FOLLOW;\n"
                                 .to_string()
-                                + &pre_decl
+                                + pre_decl
                                 + "#ifdef CONFIG_KSU_MANUAL_HOOK";
                             if open_c.contains(decl_needle) {
                                 open_c = open_c.replace(decl_needle, &decl_repl);
                             }
                         }
-                        let replacement = "#ifdef CONFIG_KSU_MANUAL_HOOK\n\tksu_handle_faccessat(&dfd, &filename, &mode, NULL);\n#endif".to_string() + &post_fence;
+                        let replacement = "#ifdef CONFIG_KSU_MANUAL_HOOK\n\tksu_handle_faccessat(&dfd, &filename, &mode, NULL);\n#endif".to_string() + post_fence;
                         open_c = open_c.replace(needle, &replacement);
                         let _ = fs::write(&open_path, open_c);
                         println!("Manually injected SUSFS faccessat fence for SPRD.");
@@ -1374,7 +1296,7 @@ pub fn handle_build(
         || proj
             .supported_ksu
             .as_ref()
-            .map_or(false, |k| k.iter().any(|s| is_bakasu_variant(s)));
+            .is_some_and(|k| k.iter().any(|s| is_bakasu_variant(s)));
 
     let setup_url = if is_bakasu {
         Some((
@@ -1411,27 +1333,25 @@ pub fn handle_build(
                 kernel_source_path.join("drivers/input/misc/Kconfig"),
                 kernel_source_path.join("drivers/misc/Kconfig"),
             ];
-            if let Some(kc) = kconfig_candidates.iter().find(|p| p.exists()) {
-                if let Ok(txt) = fs::read_to_string(kc) {
-                    if !txt.contains("INPUT_AS1509_STUB") {
-                        let frag = "config INPUT_AS1509_STUB\n\ttristate \"UWS6152 as1509 crown stub (i2c@70500000)\" if INPUT\n\tdefault y if ARCH_SPRD\n\thelp\n\t  Minimal stub for AS1509 crown controller on UWS6152 w527.\nconfig INPUT_QMC6308_STUB\n\ttristate \"UWS6152 qmc6308 compass stub\"\n\tdefault n\nconfig INPUT_BD1860_STUB\n\ttristate \"UWS6152 bd1860 stub\"\n\tdefault n\nconfig INPUT_MAFP_STUB\n\ttristate \"UWS6152 microarray mafp fingerprint stub\"\n\tdefault n\n";
-                        let _ = fs::write(kc, txt + "\n" + frag);
-                        println!("Embedded AS1509 Kconfig stub into {}", kc.display());
-                    }
-                }
+            if let Some(kc) = kconfig_candidates.iter().find(|p| p.exists())
+                && let Ok(txt) = fs::read_to_string(kc)
+                && !txt.contains("INPUT_AS1509_STUB")
+            {
+                let frag = "config INPUT_AS1509_STUB\n\ttristate \"UWS6152 as1509 crown stub (i2c@70500000)\" if INPUT\n\tdefault y if ARCH_SPRD\n\thelp\n\t  Minimal stub for AS1509 crown controller on UWS6152 w527.\nconfig INPUT_QMC6308_STUB\n\ttristate \"UWS6152 qmc6308 compass stub\"\n\tdefault n\nconfig INPUT_BD1860_STUB\n\ttristate \"UWS6152 bd1860 stub\"\n\tdefault n\nconfig INPUT_MAFP_STUB\n\ttristate \"UWS6152 microarray mafp fingerprint stub\"\n\tdefault n\n";
+                let _ = fs::write(kc, txt + "\n" + frag);
+                println!("Embedded AS1509 Kconfig stub into {}", kc.display());
             }
             let mk_candidates = [
                 kernel_source_path.join("drivers/input/misc/Makefile"),
                 kernel_source_path.join("drivers/misc/Makefile"),
             ];
-            if let Some(mk) = mk_candidates.iter().find(|p| p.exists()) {
-                if let Ok(txt) = fs::read_to_string(mk) {
-                    if !txt.contains("as1509_stub.o") {
-                        let frag = "obj-$(CONFIG_INPUT_AS1509_STUB) += as1509_stub.o\nobj-$(CONFIG_INPUT_QMC6308_STUB) += qmc6308_stub.o\nobj-$(CONFIG_INPUT_BD1860_STUB)  += bd1860_stub.o\nobj-$(CONFIG_INPUT_MAFP_STUB)    += mafp_stub.o\n";
-                        let _ = fs::write(mk, txt + "\n" + frag);
-                        println!("Embedded AS1509 Makefile stub into {}", mk.display());
-                    }
-                }
+            if let Some(mk) = mk_candidates.iter().find(|p| p.exists())
+                && let Ok(txt) = fs::read_to_string(mk)
+                && !txt.contains("as1509_stub.o")
+            {
+                let frag = "obj-$(CONFIG_INPUT_AS1509_STUB) += as1509_stub.o\nobj-$(CONFIG_INPUT_QMC6308_STUB) += qmc6308_stub.o\nobj-$(CONFIG_INPUT_BD1860_STUB)  += bd1860_stub.o\nobj-$(CONFIG_INPUT_MAFP_STUB)    += mafp_stub.o\n";
+                let _ = fs::write(mk, txt + "\n" + frag);
+                println!("Embedded AS1509 Makefile stub into {}", mk.display());
             }
             // drop stub .c files (only as1509 is default y; others deferred but ship anyway)
             let dst_dir = if kernel_source_path.join("drivers/input/misc").exists() {
@@ -1493,14 +1413,14 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
             {
                 let hook_check =
                     kernel_source_path.join("KernelSU/kernel/tools/inline_hook_check.mk");
-                if hook_check.exists() {
-                    if let Ok(mut c) = fs::read_to_string(&hook_check) {
-                        let orig = c.clone();
-                        c = c.replace("$(error", "$(warning");
-                        if c != orig {
-                            let _ = fs::write(&hook_check, c);
-                            println!("Patched inline_hook_check.mk to warning.");
-                        }
+                if hook_check.exists()
+                    && let Ok(mut c) = fs::read_to_string(&hook_check)
+                {
+                    let orig = c.clone();
+                    c = c.replace("$(error", "$(warning");
+                    if c != orig {
+                        let _ = fs::write(&hook_check, c);
+                        println!("Patched inline_hook_check.mk to warning.");
                     }
                 }
             }
@@ -1508,11 +1428,11 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
             {
                 let dc_path2 =
                     kernel_source_path.join(format!("arch/arm64/configs/{}", proj.defconfig));
-                if dc_path2.exists() {
-                    if let Ok(mut dc2) = fs::read_to_string(&dc_path2) {
-                        dc2 = upsert_kconfig_entry(&dc2, "CONFIG_KSU_MANUAL_HOOK", "y");
-                        let _ = fs::write(&dc_path2, dc2);
-                    }
+                if dc_path2.exists()
+                    && let Ok(mut dc2) = fs::read_to_string(&dc_path2)
+                {
+                    dc2 = upsert_kconfig_entry(&dc2, "CONFIG_KSU_MANUAL_HOOK", "y");
+                    let _ = fs::write(&dc_path2, dc2);
                 }
             }
             // Non-GKI 4.14 SUSFS: keep fs patch for hide, leave KSU_SUSFS dispatch off (GKI mismatch, see README).
@@ -1674,22 +1594,22 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
     if legacy_gcc {
         // Fix host dtc yamltree link failure on Ubuntu runners by stripping yamltree objects from dtc build
         let dtc_makefile = kernel_source_path.join("scripts/dtc/Makefile");
-        if dtc_makefile.exists() {
-            if let Ok(mut c) = fs::read_to_string(&dtc_makefile) {
-                c = c.replace("yamltree.o", "");
-                c = c.replace("$(HOSTLOADLIBES_dtc)", "");
-                let _ = fs::write(&dtc_makefile, c);
-            }
+        if dtc_makefile.exists()
+            && let Ok(mut c) = fs::read_to_string(&dtc_makefile)
+        {
+            c = c.replace("yamltree.o", "");
+            c = c.replace("$(HOSTLOADLIBES_dtc)", "");
+            let _ = fs::write(&dtc_makefile, c);
         }
         let dtc_src = kernel_source_path.join("scripts/dtc/dtc.c");
-        if dtc_src.exists() {
-            if let Ok(mut c) = fs::read_to_string(&dtc_src) {
-                c = c.replace(
-                    "dt_to_yaml(dti, outf);",
-                    "die(\"yaml format not supported\\n\");",
-                );
-                let _ = fs::write(&dtc_src, c);
-            }
+        if dtc_src.exists()
+            && let Ok(mut c) = fs::read_to_string(&dtc_src)
+        {
+            c = c.replace(
+                "dt_to_yaml(dti, outf);",
+                "die(\"yaml format not supported\\n\");",
+            );
+            let _ = fs::write(&dtc_src, c);
         }
     }
 
@@ -2070,4 +1990,80 @@ pub fn handle_collect_artifacts(artifact_dir: String) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn applies_anykernel_config_to_upstream_template() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let temp_dir = std::env::temp_dir().join(format!("ak3-config-test-{unique}"));
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let template = r#"properties() { '
+kernel.string=ExampleKernel by osm0sis @ xda-developers
+do.devicecheck=1
+do.modules=0
+do.systemless=1
+do.cleanup=1
+do.cleanuponabort=0
+device.name1=maguro
+supported.versions=
+supported.patchlevels=
+supported.vendorpatchlevels=
+'; } # end properties
+
+# boot shell variables
+BLOCK=/dev/block/platform/omap/omap_hsmmc.0/by-name/boot;
+IS_SLOT_DEVICE=0;
+RAMDISK_COMPRESSION=auto;
+PATCH_VBMETA_FLAG=auto;
+
+# boot install
+dump_boot; # use split_boot to skip ramdisk unpack, e.g. for devices with init_boot ramdisk
+backup_file init.rc;
+write_boot; # use flash_boot to skip ramdisk repack, e.g. for devices with init_boot ramdisk
+## end boot install
+"#;
+        fs::write(temp_dir.join("anykernel.sh"), template).unwrap();
+
+        let config = AnyKernelConfig {
+            kernel_string: "S23-Knox-Disabled-Kernel-Kokuban".to_string(),
+            device_check: true,
+            modules: false,
+            systemless: true,
+            cleanup: true,
+            cleanup_on_abort: false,
+            device_names: vec!["dm3q".to_string(), "dm2q".to_string(), "dm1q".to_string()],
+            supported_versions: Some(String::new()),
+            supported_patchlevels: Some(String::new()),
+            supported_vendorpatchlevels: Some(String::new()),
+            block: "/dev/block/by-name/boot".to_string(),
+            is_slot_device: false,
+            ramdisk_compression: Some("auto".to_string()),
+            patch_vbmeta_flag: Some("auto".to_string()),
+            boot_setup: Some("split_boot".to_string()),
+            boot_finalize: Some("flash_boot".to_string()),
+        };
+
+        apply_anykernel_config(&temp_dir, &config).unwrap();
+        let rendered = fs::read_to_string(temp_dir.join("anykernel.sh")).unwrap();
+
+        assert!(rendered.contains("kernel.string=S23-Knox-Disabled-Kernel-Kokuban"));
+        assert!(rendered.contains("device.name1=dm3q"));
+        assert!(rendered.contains("device.name3=dm1q"));
+        assert!(rendered.contains("BLOCK=/dev/block/by-name/boot;"));
+        assert!(rendered.contains("split_boot; # use split_boot to skip ramdisk unpack"));
+        assert!(rendered.contains("flash_boot; # use flash_boot to skip ramdisk repack"));
+        assert!(!rendered.contains("backup_file init.rc;"));
+        assert!(!rendered.contains("ExampleKernel by osm0sis"));
+
+        fs::remove_dir_all(&temp_dir).unwrap();
+    }
 }

@@ -397,36 +397,6 @@ pub fn handle_toolchain_checksums(
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::thread;
-    use std::time::{Duration as StdDuration, SystemTime, UNIX_EPOCH};
-
-    fn unique_temp_path(name: &str) -> PathBuf {
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        std::env::temp_dir().join(format!("{name}-{unique}"))
-    }
-
-    #[test]
-    fn cache_prune_keeps_newest_artifacts() {
-        let root = unique_temp_path("kokuban-prune-test");
-        let project_dir = root.join("artifacts/test_project");
-        fs::create_dir_all(project_dir.join("old")).unwrap();
-        thread::sleep(StdDuration::from_millis(5));
-        fs::create_dir_all(project_dir.join("new")).unwrap();
-
-        handle_cache_prune(1, None, Some(root.clone())).unwrap();
-
-        assert!(!project_dir.join("old").exists());
-        assert!(project_dir.join("new").exists());
-        fs::remove_dir_all(root).unwrap();
-    }
-}
-
 pub fn handle_cache_prune(
     keep_artifacts: usize,
     older_than_days: Option<i64>,
@@ -469,4 +439,34 @@ pub fn handle_cache_prune(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::thread;
+    use std::time::{Duration as StdDuration, SystemTime, UNIX_EPOCH};
+
+    fn unique_temp_path(name: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("{name}-{unique}"))
+    }
+
+    #[test]
+    fn cache_prune_keeps_newest_artifacts() {
+        let root = unique_temp_path("kokuban-prune-test");
+        let project_dir = root.join("artifacts/test_project");
+        fs::create_dir_all(project_dir.join("old")).unwrap();
+        thread::sleep(StdDuration::from_millis(5));
+        fs::create_dir_all(project_dir.join("new")).unwrap();
+
+        handle_cache_prune(1, None, Some(root.clone())).unwrap();
+
+        assert!(!project_dir.join("old").exists());
+        assert!(project_dir.join("new").exists());
+        fs::remove_dir_all(root).unwrap();
+    }
 }

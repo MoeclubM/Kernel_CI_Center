@@ -14,19 +14,48 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        # Must match rust-toolchain.toml: the floating @stable tag is what let a new rustfmt
+        # release break the format check on unrelated code.
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: 1.92.0
+          components: rustfmt, clippy
 
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: ci_core_rs
 
+      # `ci-core-latest` is what every kernel build actually executes, so a core must not
+      # be published merely because it compiles. These three checks duplicate
+      # `local-mode-check`, which only runs *after* a push to main has already been
+      # published: by then the untested core is live for all projects and a broken
+      # gate is indistinguishable from a passing one. Cheaper to fail here than there.
+      - name: Rust format
+        run: cargo fmt --manifest-path ci_core_rs/Cargo.toml --check
+
+      - name: Rust clippy
+        run: cargo clippy --manifest-path ci_core_rs/Cargo.toml --all-targets --locked -- -D warnings
+
+      - name: Rust tests
+        run: cargo test --locked --manifest-path ci_core_rs/Cargo.toml
+
       - name: Build CI Core
         run: cargo build --release --locked --manifest-path ci_core_rs/Cargo.toml
 
+      - name: Checksum binary
+        run: |
+          cd ci_core_rs/target/release
+          sha256sum kokuban_ci_core > kokuban_ci_core.sha256
+
       - name: Release CI Core
+        # Development branches run the gates without replacing the shared live binary.
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ci-core-latest
           name: CI Core Latest Build
-          files: ci_core_rs/target/release/kokuban_ci_core
+          body: Built from commit ${{ github.sha }} on ${{ github.ref_name }}
+          files: |
+            ci_core_rs/target/release/kokuban_ci_core
+            ci_core_rs/target/release/kokuban_ci_core.sha256

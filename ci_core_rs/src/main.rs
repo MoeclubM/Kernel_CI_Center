@@ -114,10 +114,6 @@ enum Commands {
         #[arg(long)]
         commit_id: String,
     },
-    Notify {
-        #[arg(long)]
-        tag: String,
-    },
     Build {
         #[arg(long)]
         project: String,
@@ -299,7 +295,6 @@ fn main() -> Result<()> {
             variant,
             commit_id,
         } => handle_update(token, project, variant, commit_id),
-        Commands::Notify { tag } => utils::handle_notify(tag),
         Commands::Build {
             project,
             branch,

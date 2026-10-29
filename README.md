@@ -1,17 +1,19 @@
-# Kokuban Kernel CI Center
+# Mi17 Kernel CI Center
 
 ## 项目概述
 
-Kokuban Kernel CI Center 是一个专为 Android Linux 内核编译设计的集中式持续集成与交付（CI/CD）平台。该项目旨在通过标准化的构建流程，解决多设备内核维护中的重复性工作问题，并将构建模式收敛到当前仍在维护的 `LKM` 与 `BakaSU` 两条路径。
+Mi17 Kernel CI Center 是一个专为 Android Linux 内核编译设计的集中式持续集成与交付（CI/CD）平台，当前服务于小米 17 系列（sm8850）与 UWS6152 智能手表内核。该项目旨在通过标准化的构建流程，解决多设备内核维护中的重复性工作问题，并将构建模式收敛到当前仍在维护的 `LKM` 与 `BakaSU` 两条路径。
 
 核心架构采用 **Rust** 编写的 CLI 工具（`kokuban_ci_core`）作为逻辑中枢，配合 **GitHub Actions** 进行流程编排，实现了从源码同步、工具链配置、KernelSU 集成到最终构建发布的完全自动化。
+
+> 本仓库基于 [Kokuban_Kernel_CI_Center](https://github.com/YuzakiKokuban/Kokuban_Kernel_CI_Center) 演化而来。
 
 ## 核心特性
 
 * **集中化构建编排**：通过统一的 Rust 核心程序管理所有构建逻辑，替代了传统的碎片化 Shell 脚本，确保了构建过程的类型安全与逻辑严密性。
-* **多设备支持**：支持通过配置文件定义不同设备的构建参数（Defconfig、工具链、源码仓库），当前已覆盖三星与小米多个平台。
+* **多设备支持**：支持通过配置文件定义不同设备的构建参数（Defconfig、工具链、源码仓库），当前覆盖小米 17 系列与 UWS6152 智能手表。
 * **精简的构建模式**：围绕 `LKM` 与 `BakaSU` 两种模式提供自动补丁与集成支持，已移除旧的 `KSU/MKSU` 内置分支流转。
-* **动态特性注入**：支持在构建阶段按需注入 `SuSFS` 与 `BBG`，其中 `SuSFS` 仅在 `BakaSU` 构建中启用。
+* **动态特性注入**：支持在构建阶段按需注入 `SuSFS` 与 `BBG`；`SuSFS` 当前默认关闭（上游暂停支持中）。
 * **智能工具链管理**：支持从远程 URL 自动下载、校验并解压编译工具链，兼容分卷压缩格式，并自动配置交叉编译环境变量（CLANG, GCC, Binutils）。
 * **发布工作流闭环**：构建完成后自动打包 AnyKernel3 刷机包，推送到对应的 GitHub Releases 页面，并通过 Telegram Bot API 发送详细的发布通知。
 * **上游监听**：`Watch Upstream KernelSU` 会对所有支持对应 KernelSU 变体的项目生效，并自动同步上游变更。
@@ -53,11 +55,11 @@ Kokuban Kernel CI Center 是一个专为 Android Linux 内核编译设计的集�
 
 在 GitHub Actions 页面选择 "Build Kernel" 工作流，并配置以下参数：
 
-* **Select Project**: 选择目标设备（如 `s23_sm8550`）。
+* **Select Project**: 选择目标设备（如 `mi17_sm8850`）。
 * **Git Branch/Tag**: 指定内核源码分支，通常使用 `main` 或 `bakasu`。
 * **Build Mode Override**: 选择构建模式（默认为 `default`，即跟随分支策略）。
 * **Create Release**: 是否在构建成功后创建 GitHub Release。
-* **Apply SuSFS / Apply BBG**: SuSFS 默认开启；BBG 默认关闭。其中 `SuSFS` 仅在 `BakaSU` 构建时真正生效。
+* **Apply SuSFS / Apply BBG**: SuSFS 默认关闭（上游暂停支持中）；BBG 默认关闭。
 
 ### 2. 仓库初始化与分支整理
 
@@ -96,14 +98,14 @@ sudo apt-get install -y build-essential git libncurses5-dev bc bison flex \
 
 ```bash
 # LKM / main
-./kokuban build s23_sm8550
+./kokuban build uws6152_ums312
 
 # BakaSU
-./kokuban build s25_sm8750 bakasu bakasu
+./kokuban build mi17_sm8850 bakasu bakasu
 
 # BakaSU 默认启用 SuSFS，BBG 默认关闭，可按需显式传参开启
-./kokuban build s25_sm8750 bakasu bakasu --no-susfs
-./kokuban build s25_sm8750 bakasu bakasu --with-bbg
+./kokuban build mi17_sm8850 bakasu bakasu --no-susfs
+./kokuban build mi17_sm8850 bakasu bakasu --with-bbg
 
 # 指定自定义缓存根目录
 ./kokuban build mi17_sm8850 bakasu bakasu --local-root ~/kokuban-local-cache
@@ -114,7 +116,7 @@ sudo apt-get install -y build-essential git libncurses5-dev bc bison flex \
 ```bash
 ./kokuban list                 # 列出可用项目
 ./kokuban features             # 查看所有项目的 SuSFS / BBG 支持状态
-./kokuban features s25_sm8750  # 查看单个项目的 SuSFS / BBG 配置
+./kokuban features mi17_sm8850  # 查看单个项目的 SuSFS / BBG 配置
 ./kokuban validate             # 校验项目配置完整性
 ./kokuban doctor               # 检查本地依赖
 ./kokuban cache status         # 查看本地缓存占用
@@ -127,7 +129,7 @@ sudo apt-get install -y build-essential git libncurses5-dev bc bison flex \
 正式构建前可以先看计划，不会改动源码或缓存：
 
 ```bash
-./kokuban plan s25_sm8750 bakasu bakasu
+./kokuban plan mi17_sm8850 bakasu bakasu
 ```
 
 本地 CLI 默认会给构建传入 `apply_susfs=true` 与 `apply_bbg=false`。也可以写入本地默认配置：
@@ -145,16 +147,16 @@ sudo apt-get install -y build-essential git libncurses5-dev bc bison flex \
 可以把常用构建保存为预设：
 
 ```bash
-./kokuban preset set daily-s25 s25_sm8750 bakasu bakasu
+./kokuban preset set daily-mi17 mi17_sm8850 bakasu bakasu
 ./kokuban preset list
-./kokuban preset show daily-s25
-./kokuban run daily-s25
+./kokuban preset show daily-mi17
+./kokuban run daily-mi17
 ```
 
 本地模式默认会执行 `git fetch` 更新源码，并复用已经下载过的工具链包、内核 mirror、AnyKernel3 仓库、`sccache` / `ccache` 目录。已有缓存后，可以用离线模式跳过网络访问：
 
 ```bash
-./kokuban build s23_sm8550 --offline
+./kokuban build uws6152_ums312 --offline
 ```
 
 如果只想使用已有源码、不主动拉取远端更新，可使用 `--no-fetch`。如果希望清理内核源码工作区中的未跟踪文件，可使用 `--clean`。
@@ -168,7 +170,7 @@ sudo apt-get install -y build-essential git libncurses5-dev bc bison flex \
 ```bash
 ./kokuban cache clean artifacts
 ./kokuban cache clean logs
-./kokuban cache clean project s23_sm8550
+./kokuban cache clean project uws6152_ums312
 ./kokuban cache clean all
 ```
 
@@ -186,7 +188,7 @@ sudo apt-get install -y build-essential git libncurses5-dev bc bison flex \
 
 ```bash
 ./kokuban cache clean locks
-./kokuban build s23_sm8550 --force-lock
+./kokuban build uws6152_ums312 --force-lock
 ```
 
 如果希望在固定 Ubuntu 环境中构建，可以使用仓库内的 `Dockerfile` 或 `.devcontainer/devcontainer.json`。脚本检查入口：
@@ -202,10 +204,10 @@ sudo apt-get install -y build-essential git libncurses5-dev bc bison flex \
 
 ```bash
 # 解析项目配置
-cargo run --bin kokuban_ci_core -- parse --project s23_sm8550
+cargo run --bin kokuban_ci_core -- parse --project uws6152_ums312
 
 # 执行构建流程 (需自行准备环境)
-cargo run --bin kokuban_ci_core -- build --project s23_sm8550 --branch main --do-release false
+cargo run --bin kokuban_ci_core -- build --project uws6152_ums312 --branch main --do-release false
 
 # 执行 BakaSU 构建
-cargo run --bin kokuban_ci_core -- build --project s25_sm8750 --branch bakasu --do-release false
+cargo run --bin kokuban_ci_core -- build --project mi17_sm8850 --branch bakasu --do-release false

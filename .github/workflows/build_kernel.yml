@@ -388,7 +388,6 @@ jobs:
       - name: Build Kernel Package (do-release false)
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
           ARGS=(--project ${{ env.PROJECT }} --branch ${{ env.VARIANT }} --do-release false)
           if [ -n "${{ env.CUSTOM_LOCALVERSION }}" ]; then
@@ -465,7 +464,9 @@ jobs:
 
           * **发布时间**：@DATE_TAG@
           * **集成特性**：BakaSU + Re-Kernel + TCP Brutal + ADIOS
-          * **SuSFS**：上游 BakaSU 已暂停支持，本次未启用（待 simonpunk 同步后恢复）
+          * **SuSFS**：未启用（上游暂停支持中）
+
+          > 基于 [BakaSU](https://github.com/Baka-SU/BakaSU) 与 [YuzakiKokuban 内核项目](https://github.com/YuzakiKokuban/android_kernel_xiaomi_sm8850) 构建。
 
           ---
 

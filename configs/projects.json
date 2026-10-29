@@ -1,9 +1,4 @@
 {
-  "_globals": {
-    "broadcast_channel": "@BLBDSBD",
-    "bakasu_chat_id": "@BakaSU_Grp",
-    "bakasu_topic_id": 36
-  },
   "mi17_sm8850": {
     "repo": "MoeclubM/android_kernel_xiaomi_sm8850",
     "defconfig": "gki_defconfig",

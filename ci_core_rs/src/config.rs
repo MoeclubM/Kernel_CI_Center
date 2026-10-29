@@ -52,15 +52,6 @@ pub struct BbgConfig {
     pub setup_url: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct GlobalConfig {
-    pub broadcast_channel: Option<String>,
-    #[serde(alias = "resukisu_chat_id")]
-    pub bakasu_chat_id: Option<String>,
-    #[serde(alias = "resukisu_topic_id")]
-    pub bakasu_topic_id: Option<i32>,
-}
-
 pub type ProjectsMap = HashMap<String, serde_json::Value>;
 pub type AnyKernelConfigMap = HashMap<String, AnyKernelConfig>;
 

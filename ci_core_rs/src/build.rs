@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use crate::config::{AnyKernelConfig, BbgConfig, ProjectConfig, SusfsConfig};
 use crate::utils::{
-    cache_file_name, command_exists, env_flag, file_sha256, handle_notify, is_bakasu_variant,
+    cache_file_name, command_exists, env_flag, file_sha256, is_bakasu_variant,
     load_anykernel_config, load_project, run_cmd, run_cmd_with_env, set_github_output,
     url_file_name, variant_suffix,
 };
@@ -1943,12 +1943,6 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
                 None,
                 false,
             )?;
-
-            if let Err(e) = handle_notify(release_tag) {
-                // Notification is best-effort; a missing/misconfigured Telegram
-                // bot must not fail an otherwise successful release.
-                println!("Telegram notification failed: {e}");
-            }
         } else {
             return Err(anyhow!("Final zip not found"));
         }

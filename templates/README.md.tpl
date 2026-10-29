@@ -1,14 +1,5 @@
 <!-- BEGIN-ZH -->
-# Kokuban 内核 for __DEVICE_NAME_CN__
-
-<p align="center">
-<img src="https://raw.githubusercontent.com/YuzakiKokuban/Kokuban_Kernel_CI_Center/main/docs/kokuban_logo.png" alt="Logo" width="150">
-</p>
-
-<p align="center">
-<a href="https://github.com/__PROJECT_REPO__/releases"><img src="https://img.shields.io/github/v/release/__PROJECT_REPO__?style=for-the-badge&logo=github&color=blue" alt="GitHub release"></a>
-<a href="https://t.me/kokubanchat"><img src="https://img.shields.io/badge/Telegram-交流群-blue.svg?style=for-the-badge&logo=telegram" alt="Telegram"></a>
-</p>
+# __DEVICE_NAME_CN__内核
 
 这是一个面向 **__DEVICE_NAME_CN__** 的自定义内核项目，重点围绕稳定性、性能调优与日常可用性进行构建。项目当前维护 `LKM` 与 `BakaSU` 两种发行模式，以满足不同用户对纯净环境和高级功能的需求。
 
@@ -16,7 +7,7 @@
 
 * **性能优化**：提供面向日常使用与游戏场景的调度与性能调优。
 * **精简发行模式**：围绕 `LKM` 与 `BakaSU` 两种模式持续维护，减少历史分支带来的维护复杂度。
-* **扩展特性支持**：可按构建配置集成 `SuSFS` 与 `BBG`，其中 `SuSFS` 仅在 `BakaSU` 构建中启用。
+* **扩展特性支持**：可按构建配置集成 `SuSFS` 与 `BBG`。
 * **版本标识**：`__LOCALVERSION_BASE__`
 
 ## 发行版本说明
@@ -26,10 +17,7 @@
   * 如需 Root，需要通过 KernelSU Manager App 手动修补并刷入设备的 `init_boot` 镜像。
 
 * **BakaSU**
-  * 集成 BakaSU，并支持 `SUSFS` 与 `KPM` 等高级特性。
-  * 适合有模块扩展、隐藏能力或进阶调试需求的用户。
-
-> 当前项目不再维护旧的内置 `KSU/MKSU` 分支模式。
+  * 集成 BakaSU，适合有模块扩展、隐藏能力或进阶调试需求的用户。
 
 ## 安装指南
 
@@ -46,7 +34,15 @@
 
 ## 反馈与支持
 
-如需获取使用交流、问题反馈或发布通知，可加入 [Telegram 交流群](https://t.me/kokubanchat)。
+请通过本仓库的 [Issues](https://github.com/__PROJECT_REPO__/issues) 反馈问题。
+
+## 来源与致谢
+
+本项目基于以下开源项目构建：
+
+* [BakaSU](https://github.com/Baka-SU/BakaSU) — 内核 Root 方案
+* [YuzakiKokuban 内核项目](https://github.com/YuzakiKokuban/android_kernel_xiaomi_sm8850) — 设备内核与构建参考
+* [KernelSU](https://github.com/tiann/KernelSU)
 
 ## 免责声明
 
@@ -54,16 +50,7 @@
 <!-- END-ZH -->
 
 <!-- BEGIN-EN -->
-# Kokuban Kernel for __DEVICE_NAME_EN__
-
-<p align="center">
-<img src="https://raw.githubusercontent.com/YuzakiKokuban/Kokuban_Kernel_CI_Center/main/docs/kokuban_logo.png" alt="Logo" width="150">
-</p>
-
-<p align="center">
-<a href="https://github.com/__PROJECT_REPO__/releases"><img src="https://img.shields.io/github/v/release/__PROJECT_REPO__?style=for-the-badge&logo=github&color=blue" alt="GitHub release"></a>
-<a href="https://t.me/kokubanchat"><img src="https://img.shields.io/badge/Telegram-Chat-blue.svg?style=for-the-badge&logo=telegram" alt="Telegram"></a>
-</p>
+# __DEVICE_NAME_EN__ Kernel
 
 This is a custom kernel project for the **__DEVICE_NAME_EN__**, built with a focus on stability, performance tuning, and day-to-day usability. The project currently maintains two release tracks, `LKM` and `BakaSU`, to serve both clean setups and advanced power-user workflows.
 
@@ -71,7 +58,7 @@ This is a custom kernel project for the **__DEVICE_NAME_EN__**, built with a foc
 
 * **Performance Tuned**: Includes targeted scheduling and performance optimizations for smoother daily use and gaming.
 * **Streamlined Release Model**: Focuses on the actively maintained `LKM` and `BakaSU` variants to keep maintenance predictable and transparent.
-* **Optional Feature Integration**: Matching builds may include `SuSFS` and `BBG`, with `SuSFS` enabled only on `BakaSU` releases.
+* **Optional Feature Integration**: Matching builds may include `SuSFS` and `BBG`.
 * **Version Identifier**: `__LOCALVERSION_BASE__`
 
 ## Release Variants
@@ -81,10 +68,7 @@ This is a custom kernel project for the **__DEVICE_NAME_EN__**, built with a foc
   * If root access is required, patch and flash the device `init_boot` image manually through the KernelSU Manager App.
 
 * **BakaSU**
-  * Ships with BakaSU integration and supports advanced capabilities such as `SUSFS` and `KPM`.
-  * Recommended for users who need module extensibility, root hiding, or other advanced workflows.
-
-> This project no longer maintains the legacy built-in `KSU/MKSU` branch model.
+  * Ships with BakaSU integration, recommended for users who need module extensibility, root hiding, or other advanced workflows.
 
 ## Installation
 
@@ -101,13 +85,17 @@ All current builds are published on the [**Releases Page**](https://github.com/_
 
 ## Support
 
-For release notifications, discussion, or general support, join the [Telegram group](https://t.me/kokubanchat).
+Please report issues via [Issues](https://github.com/__PROJECT_REPO__/issues) in this repository.
+
+## Credits
+
+This project is built on top of these open-source projects:
+
+* [BakaSU](https://github.com/Baka-SU/BakaSU) — kernel-side root solution
+* [YuzakiKokuban kernel](https://github.com/YuzakiKokuban/android_kernel_xiaomi_sm8850) — device kernel and build reference
+* [KernelSU](https://github.com/tiann/KernelSU)
 
 ## Disclaimer
 
 Flashing custom software carries inherent risks. Please make a full backup of your personal data before proceeding. I am not responsible for any damage to your device or data loss that may occur as a result of flashing this kernel.
 <!-- END-EN -->
-
-<p align="center">
-<a href="https://www.paypal.me/LangQin280">☕ Support Me</a>
-</p>

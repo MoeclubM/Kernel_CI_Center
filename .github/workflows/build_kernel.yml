@@ -212,7 +212,7 @@ jobs:
                     flavor: "stock_stealth",
                     branch: "bakasu",
                     variant: "bakasu",
-                    custom_localversion: "-android16-6-gb1493ec68d4a-abogki514973465-4k",
+                    custom_localversion: "-android16-6-g43b5ab7e247d-abogki561813157-4k",
                     bakasu_setup_arg: $rsa,
                     stealth: true,
                     apply_susfs: false,
@@ -256,7 +256,7 @@ jobs:
                       flavor: "stock_stealth",
                       branch: $br,
                       variant: $var,
-                      custom_localversion: "-android16-6-gb1493ec68d4a-abogki514973465-4k",
+                      custom_localversion: "-android16-6-g43b5ab7e247d-abogki561813157-4k",
                       bakasu_setup_arg: $rsa,
                       stealth: true,
                       apply_susfs: $susfs,
@@ -276,7 +276,7 @@ jobs:
                       flavor: "stock_stealth",
                       branch: $br,
                       variant: $var,
-                      custom_localversion: "-android16-6-gb1493ec68d4a-abogki514973465-4k",
+                      custom_localversion: "-android16-6-g43b5ab7e247d-abogki561813157-4k",
                       bakasu_setup_arg: $rsa,
                       stealth: true,
                       apply_susfs: $susfs,
@@ -365,8 +365,8 @@ jobs:
       - name: Configure Stealth Metadata
         if: matrix.stealth == true
         run: |
-          echo "SOURCE_DATE_EPOCH=1779287194" >> "$GITHUB_ENV"
-          echo "KBUILD_BUILD_TIMESTAMP=Wed May 20 14:26:34 UTC 2026" >> "$GITHUB_ENV"
+          echo "SOURCE_DATE_EPOCH=1788880129" >> "$GITHUB_ENV"
+          echo "KBUILD_BUILD_TIMESTAMP=Tue Sep  8 15:08:49 UTC 2026" >> "$GITHUB_ENV"
           echo "KBUILD_BUILD_USER=kleaf" >> "$GITHUB_ENV"
           echo "KBUILD_BUILD_HOST=build-host" >> "$GITHUB_ENV"
           echo "KBUILD_BUILD_VERSION=1" >> "$GITHUB_ENV"
@@ -510,7 +510,7 @@ jobs:
 
           2. **原厂伪装版 (StockStealth)**
              - 文件匹配：`Mi17_Kernel_StockStealth-*.zip`
-             - 说明：官方原厂元数据模拟（构建时间 `Wed May 20 14:26:34 UTC 2026`、主机签名 `kleaf@build-host`、版本号 `-android16-6-gb1493ec68d4a-abogki514973465-4k`）。
+             - 说明：官方原厂元数据模拟（构建时间 `Tue Sep  8 15:08:49 UTC 2026`、主机签名 `kleaf@build-host`、版本号 `-android16-6-g43b5ab7e247d-abogki561813157-4k`）。
           EOF
             sed -i "s|@DATE_TAG@|${DATE_TAG}|g" release_notes_mi17.md
             echo "Creating release for Mi17..."

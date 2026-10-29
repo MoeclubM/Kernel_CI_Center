@@ -1053,6 +1053,42 @@ fn capture_make_output(
         .to_string())
 }
 
+const SELINUX_HIDE_EARLY_REJECT_PATCH: &str =
+    include_str!("../../patches/bakasu/selinux_hide_early_reject.patch");
+
+// Reject a context against the backup policy before touching the live policy. The
+// interleaved dual-policy parse keeps the success and failure paths aligned, but an
+// invalid context still paid for two symtab lookups per field while stock kernels pay
+// for one; an app_zygote A-B timing probe can observe the difference.
+fn apply_selinux_hide_early_reject(kernel_source_path: &Path) -> Result<()> {
+    let ksu_dir = kernel_source_path.join("KernelSU");
+    if !ksu_dir.join("kernel/feature/selinux_hide.c").exists() {
+        println!("[!] BakaSU kernel tree not found; skipping local patches.");
+        return Ok(());
+    }
+
+    let patch_path = env::temp_dir().join("selinux_hide_early_reject.patch");
+    fs::write(&patch_path, SELINUX_HIDE_EARLY_REJECT_PATCH)?;
+    let patch_arg = patch_path.display().to_string();
+
+    if run_cmd(
+        &["git", "apply", "--check", "-p1", &patch_arg],
+        Some(&ksu_dir),
+        false,
+    )
+    .is_err()
+    {
+        println!(
+            "[!] selinux_hide early-reject patch does not apply (upstream already fixed it?); continuing."
+        );
+        return Ok(());
+    }
+
+    run_cmd(&["git", "apply", "-p1", &patch_arg], Some(&ksu_dir), false)?;
+    println!("[+] Applied selinux_hide early-reject patch.");
+    Ok(())
+}
+
 fn update_kconfig_file(path: &Path, entries: &[(&str, &str)]) -> Result<()> {
     if !path.exists() {
         return Ok(());
@@ -1273,7 +1309,7 @@ pub fn handle_build(
             libclang_path.display().to_string(),
         );
         build_env.insert("KBUILD_GENDWARFKSYMS_STABLE".to_string(), "1".to_string());
-        build_env.insert("KBUILD_BUILD_USER".to_string(), "build-user".to_string());
+        build_env.insert("KBUILD_BUILD_USER".to_string(), "kleaf".to_string());
         build_env.insert("KBUILD_BUILD_HOST".to_string(), "build-host".to_string());
         build_env.insert("LC_ALL".to_string(), "C".to_string());
     }
@@ -1443,6 +1479,10 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
             Some(&kernel_source_path),
             &envs,
         )?;
+    }
+
+    if is_bakasu {
+        apply_selinux_hide_early_reject(&kernel_source_path)?;
     }
 
     let mut feature_suffixes = Vec::new();

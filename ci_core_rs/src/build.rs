@@ -330,6 +330,20 @@ fn truncate_to_len(input: &str, max_len: usize) -> String {
     input.chars().take(max_len).collect()
 }
 
+fn validate_kernel_version(project_key: &str, expected: Option<&str>, actual: &str) -> Result<()> {
+    if let Some(expected) = expected
+        && actual != expected
+    {
+        return Err(anyhow!(
+            "Project {} requires kernel {}, but the source reports {}",
+            project_key,
+            expected,
+            actual
+        ));
+    }
+    Ok(())
+}
+
 fn build_sm8750_localversion(base: &str, short_sha: &str, kernel_version: &str) -> Result<String> {
     const UNAME_MAX_VISIBLE_LEN: usize = 63;
 
@@ -881,8 +895,17 @@ fn apply_bbg_overlay(
     let setup_url = bbg
         .and_then(|cfg| cfg.setup_url.as_deref())
         .unwrap_or("https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh");
-    let cmd = format!("curl -LSs '{}' | bash", setup_url);
-    run_cmd(&["bash", "-c", &cmd], Some(&common_root), false)?;
+    let mut envs = HashMap::new();
+    envs.insert("KOKUBAN_SETUP_URL".to_string(), setup_url.to_string());
+    run_cmd_with_env(
+        &[
+            "bash",
+            "-c",
+            "set -o pipefail; curl -fsSL \"$KOKUBAN_SETUP_URL\" | bash",
+        ],
+        Some(&common_root),
+        &envs,
+    )?;
 
     let security_kconfig = find_first_existing_path(
         &common_root,
@@ -1397,8 +1420,20 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
     }
 
     if let Some((url, arg)) = setup_url {
-        let cmd = format!("curl -LSs '{}' | bash -s {}", url, arg);
-        run_cmd(&["bash", "-c", &cmd], Some(&kernel_source_path), false)?;
+        // The URL and argument come from config/dispatch input; passing them as environment
+        // variables keeps shell metacharacters out of the command line.
+        let mut envs = HashMap::new();
+        envs.insert("KOKUBAN_SETUP_URL".to_string(), url.to_string());
+        envs.insert("KOKUBAN_SETUP_ARG".to_string(), arg.to_string());
+        run_cmd_with_env(
+            &[
+                "bash",
+                "-c",
+                "set -o pipefail; curl -fsSL \"$KOKUBAN_SETUP_URL\" | bash -s \"$KOKUBAN_SETUP_ARG\"",
+            ],
+            Some(&kernel_source_path),
+            &envs,
+        )?;
     }
 
     let mut feature_suffixes = Vec::new();
@@ -1456,6 +1491,11 @@ static int mafp_probe(struct spi_device *s){dev_info(&s->dev,"mafp stub probe (d
     }
 
     let kernel_version = capture_make_output(&kernel_source_path, "kernelversion", is_sm8850)?;
+    validate_kernel_version(
+        &project_key,
+        proj.expected_kernel_version.as_deref(),
+        &kernel_version,
+    )?;
 
     let short_sha = run_cmd(
         &["git", "rev-parse", "--short=12", "HEAD"],
@@ -1990,6 +2030,18 @@ pub fn handle_collect_artifacts(artifact_dir: String) -> Result<()> {
 mod tests {
     use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn rejects_unexpected_kernel_version() {
+        let error = validate_kernel_version("mi17_sm8850", Some("6.12.69"), "6.12.68").unwrap_err();
+
+        assert_eq!(
+            error.to_string(),
+            "Project mi17_sm8850 requires kernel 6.12.69, but the source reports 6.12.68"
+        );
+        assert!(validate_kernel_version("mi17_sm8850", None, "6.12.68").is_ok());
+        assert!(validate_kernel_version("mi17_sm8850", Some("6.12.69"), "6.12.69").is_ok());
+    }
 
     #[test]
     fn applies_anykernel_config_to_upstream_template() {

@@ -18,8 +18,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          gh release download ci-core-latest -p "kokuban_ci_core" --clobber
-          chmod +x kokuban_ci_core
+          ./scripts/fetch-ci-core.sh
           
       - name: Check Upstream
         id: watcher
@@ -47,6 +46,7 @@ jobs:
     if: needs.check.outputs.found_updates == 'true'
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         include: ${{ fromJson(needs.check.outputs.matrix) }}
     runs-on: ubuntu-latest
@@ -57,8 +57,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          gh release download ci-core-latest -p "kokuban_ci_core" --clobber
-          chmod +x kokuban_ci_core
+          ./scripts/fetch-ci-core.sh
           
       - name: Perform Update
         run: |

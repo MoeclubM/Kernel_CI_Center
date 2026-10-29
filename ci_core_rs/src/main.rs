@@ -1,6 +1,7 @@
 mod admin;
 mod build;
 mod config;
+mod git_auth;
 mod local;
 mod settings;
 mod utils;
@@ -114,6 +115,12 @@ enum Commands {
         #[arg(long)]
         commit_id: String,
     },
+    /// Print the content stamp of the `ci_core_rs` tree this binary was built from.
+    ///
+    /// Callers that download the moving `ci-core-latest` release use it to prove they are
+    /// running a core that matches the tree they are driving, instead of silently executing
+    /// an older core whose checks are missing.
+    Stamp,
     Build {
         #[arg(long)]
         project: String,
@@ -295,6 +302,10 @@ fn main() -> Result<()> {
             variant,
             commit_id,
         } => handle_update(token, project, variant, commit_id),
+        Commands::Stamp => {
+            println!("{}", env!("KOKUBAN_CORE_TREE"));
+            Ok(())
+        }
         Commands::Build {
             project,
             branch,
@@ -507,6 +518,7 @@ fn handle_add(options: AddOptions) -> Result<()> {
         repo: options.repo,
         defconfig: options.defconfig,
         localversion_base: options.localversion,
+        expected_kernel_version: None,
         lto: None,
         supported_ksu: Some(vec!["bakasu".to_string()]),
         toolchain_urls: None,
@@ -573,11 +585,7 @@ fn handle_setup(
         println!("Processing project: {} -> {}", key, repo_url);
 
         let target_dir = workspace.join(&key);
-        let auth_url = if let Some(t) = &token {
-            format!("https://{}@github.com/{}.git", t, repo_url)
-        } else {
-            format!("https://github.com/{}.git", repo_url)
-        };
+        let auth_url = crate::git_auth::github_clone_url(&repo_url, token.as_deref());
 
         if target_dir.exists() {
             fs::remove_dir_all(&target_dir)?;
@@ -669,6 +677,9 @@ fn handle_setup(
             }
 
             run_cmd(&["git", "add", "."], Some(&target_dir), false)?;
+            // `.github` is a dot-directory and the universal .gitignore ignores dot-files, so
+            // a trigger that is not tracked yet would be silently dropped from the commit.
+            run_cmd(&["git", "add", "-f", ".github"], Some(&target_dir), false)?;
             let status = run_cmd(&["git", "status", "--porcelain"], Some(&target_dir), true)?;
 
             if !status.unwrap_or_default().is_empty() {
@@ -889,7 +900,7 @@ fn handle_update(
         fs::remove_dir_all(&target_dir)?;
     }
 
-    let auth_url = format!("https://{}@github.com/{}.git", token, repo_url);
+    let auth_url = crate::git_auth::github_clone_url(&repo_url, Some(&token));
     run_cmd(
         &[
             "git",

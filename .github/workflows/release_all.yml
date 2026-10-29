@@ -23,8 +23,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          gh release download ci-core-latest -p "kokuban_ci_core" --clobber
-          chmod +x kokuban_ci_core
+          ./scripts/fetch-ci-core.sh
 
       - name: Generate Matrix
         id: set-matrix
@@ -35,12 +34,12 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.matrix.outputs.matrix) }}
       fail-fast: false
+      # One kernel build at a time: a mass release must not fan out to N runners at once.
+      max-parallel: 1
     uses: ./.github/workflows/build_kernel.yml
     with:
       project: ${{ inputs.project }}
       branch: ${{ matrix.branch }}
       ksu_variant: ${{ matrix.ksu_variant }}
       do_release: true
-      apply_susfs: true
-      apply_bbg: false
     secrets: inherit

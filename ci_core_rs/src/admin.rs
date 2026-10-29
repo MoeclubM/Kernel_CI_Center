@@ -57,6 +57,40 @@ fn remove_path(path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Reject a user-supplied path component that would resolve outside `root`.
+///
+/// `sanitize_path_component` already replaces separators, but `.`/`..` and absolute paths
+/// survive in other call paths, so validate the component shape and confirm the resolved
+/// target still sits under the cache root before anything is deleted.
+fn ensure_within(root: &Path, component: &str) -> Result<()> {
+    let candidate = Path::new(component);
+    let mut parts = candidate.components();
+    let single_segment = !candidate.is_absolute()
+        && matches!(parts.next(), Some(std::path::Component::Normal(_)))
+        && parts.next().is_none();
+
+    if !single_segment {
+        return Err(anyhow!(
+            "Invalid project name {:?}: it must be a single path segment without separators or '.'/'..'",
+            component
+        ));
+    }
+
+    let root = fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
+    let resolved = fs::canonicalize(root.join(component))
+        .unwrap_or_else(|_| root.join(component).to_path_buf());
+
+    if !resolved.starts_with(&root) {
+        return Err(anyhow!(
+            "Refusing to clean {:?}: it resolves outside the cache root {}",
+            component,
+            root.display()
+        ));
+    }
+
+    Ok(())
+}
+
 fn project_values() -> Result<Vec<(String, ProjectConfig)>> {
     let projects = load_projects()?;
     let mut values = Vec::new();
@@ -246,14 +280,10 @@ pub fn handle_cache_clean(
             let project =
                 project.ok_or_else(|| anyhow!("cache clean project requires --project"))?;
             let project_key = sanitize_path_component(&project);
+            ensure_within(&root, &project)?;
             remove_path(&root.join("builds").join(&project_key))?;
             remove_path(&root.join("artifacts").join(&project_key))?;
             remove_path(&root.join("logs").join(&project_key))?;
-            if project_key != project {
-                remove_path(&root.join("builds").join(&project))?;
-                remove_path(&root.join("artifacts").join(&project))?;
-                remove_path(&root.join("logs").join(&project))?;
-            }
             remove_path(
                 &root
                     .join("repos/kernels")

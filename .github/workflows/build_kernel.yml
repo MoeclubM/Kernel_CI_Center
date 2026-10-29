@@ -62,6 +62,38 @@ on:
         default: false
   repository_dispatch:
     types: [build-kernel]
+  workflow_call:
+    inputs:
+      project:
+        required: true
+        type: string
+      branch:
+        required: true
+        type: string
+      ksu_variant:
+        type: string
+        default: 'default'
+      do_release:
+        type: boolean
+        default: false
+      custom_localversion:
+        type: string
+        default: ''
+      bakasu_setup_arg:
+        type: string
+        default: ''
+      apply_susfs:
+        type: boolean
+        default: false
+      apply_bbg:
+        type: boolean
+        default: false
+      build_flavor:
+        type: string
+        default: 'both'
+      force_build:
+        type: boolean
+        default: true
 
 jobs:
   check-and-matrix:
@@ -132,8 +164,7 @@ jobs:
             current_tracked=$(jq -r '.bakasu // ""' configs/upstream_commits.json 2>/dev/null || echo "")
             if [ -n "$upstream_hash" ] && [ "$upstream_hash" != "$current_tracked" ]; then
               echo "Upstream BakaSU updated: $current_tracked -> $upstream_hash"
-              gh release download ci-core-latest -p "kokuban_ci_core" --clobber
-              chmod +x kokuban_ci_core
+              ./scripts/fetch-ci-core.sh
               ./kokuban_ci_core update --token "$GH_TOKEN" --project "mi17_sm8850" --variant "bakasu" --commit-id "$upstream_hash"
               ./kokuban_ci_core update --token "$GH_TOKEN" --project "uws6152_ums312" --variant "bakasu" --commit-id "$upstream_hash"
               
@@ -305,7 +336,10 @@ jobs:
   build:
     needs: check-and-matrix
     if: needs.check-and-matrix.outputs.should_build == 'true'
-    runs-on: ubuntu-latest
+    # Keep the host environment aligned with Dockerfile. Ubuntu 26.04's libc headers
+    # trigger const-pointer errors in the older kernels' libbpf host tools, failing
+    # resolve_btfids before the kernel can build.
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     strategy:
@@ -347,8 +381,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
         run: |
-          gh release download ci-core-latest --repo MoeclubM/Kernel_CI_Center -p "kokuban_ci_core"
-          chmod +x kokuban_ci_core
+          ./scripts/fetch-ci-core.sh
 
       - name: Parse Configuration
         run: ./kokuban_ci_core parse --project ${{ env.PROJECT }}

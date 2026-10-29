@@ -6,6 +6,9 @@ pub struct ProjectConfig {
     pub repo: String,
     pub defconfig: String,
     pub localversion_base: String,
+    /// Kernel version the source tree must report before a build starts. A drift here means
+    /// the source setup produced the wrong tree and every later check would run against it.
+    pub expected_kernel_version: Option<String>,
     pub lto: Option<String>,
     pub supported_ksu: Option<Vec<String>>,
     pub toolchain_urls: Option<Vec<String>>,

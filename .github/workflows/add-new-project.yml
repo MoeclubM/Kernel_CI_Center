@@ -43,8 +43,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          gh release download ci-core-latest -p "kokuban_ci_core" --clobber
-          chmod +x kokuban_ci_core
+          ./scripts/fetch-ci-core.sh
 
       - name: Add to Configuration
         run: |
@@ -55,7 +54,6 @@ jobs:
             --localversion "${{ inputs.localversion }}" \
             --device_cn "${{ inputs.device_name_cn }}" \
             --device_en "${{ inputs.device_name_en }}" \
-            --ak3_branch "${{ inputs.ak3_branch }}" \
             --zip_name "${{ inputs.zip_name }}"
             
       - name: Commit and Push

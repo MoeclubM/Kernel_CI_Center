@@ -1,74 +1,65 @@
 From: MoeclubM <noreply@github.com>
-Subject: [PATCH] selinux_hide: reject invalid context before live-policy lookup
+Subject: [PATCH] selinux_hide: reject invalid context before consulting the second policy
 
-string_to_context_struct() interleaves the backup and live policy lookups so
-that success and failure paths perform the same amount of work. For an invalid
-context, however, the live-policy symtab searches still run even though the
-backup result is authoritative and the live result is discarded.
+string_to_context_struct() interleaves the two policy lookups so that success
+and failure paths perform the same amount of work. For an invalid context the
+orig_pol symtab searches and its mls_context_to_sid() still run even though
+the first result is authoritative and the second is discarded.
 
 A freshly spawned app_zygote can compare an invalid-context attr/current write
 against an equal-length leading-newline payload that is rejected before any
 parsing. Stock kernels perform one set of lookups for the invalid context and
-none for the newline payload; the extra live-policy lookups widen that gap into
-a measurable A-B timing anomaly.
+none for the newline payload; the extra orig_pol lookups widen that gap into a
+measurable A-B timing anomaly.
 
-Search the authoritative policy first and bail out before consulting the live
-policy. Contexts accepted by the backup policy keep the aligned dual-policy
+Search the authoritative policy first and bail out before consulting orig_pol.
+Contexts accepted by the authoritative policy keep the aligned dual-policy
 parse; rejected contexts now cost one parse, matching stock.
 
 --- a/kernel/feature/selinux_hide.c
 +++ b/kernel/feature/selinux_hide.c
-@@ -1103,9 +1103,9 @@
-     *p++ = 0;
+@@ -1107,9 +1107,9 @@
+     *orig_p++ = *p++ = 0;
  
      usrdatum = symtab_search(&pol->p_users, scontextp);
--    orig_usrdatum = symtab_search(&orig_pol->p_users, scontextp);
+-    orig_usrdatum = symtab_search(&orig_pol->p_users, orig_scontextp);
      if (!usrdatum)
          goto out;
-+    orig_usrdatum = symtab_search(&orig_pol->p_users, scontextp);
++    orig_usrdatum = symtab_search(&orig_pol->p_users, orig_scontextp);
  
      ctx->user = usrdatum->value;
      if (orig_usrdatum)
-@@ -1124,9 +1124,9 @@
-     *p++ = 0;
+@@ -1129,9 +1129,9 @@
+     *orig_p++ = *p++ = 0;
  
      role = symtab_search(&pol->p_roles, scontextp);
--    orig_role = symtab_search(&orig_pol->p_roles, scontextp);
+-    orig_role = symtab_search(&orig_pol->p_roles, orig_scontextp);
      if (!role)
          goto out;
-+    orig_role = symtab_search(&orig_pol->p_roles, scontextp);
++    orig_role = symtab_search(&orig_pol->p_roles, orig_scontextp);
      ctx->role = role->value;
      if (orig_role)
          orig_ctx->role = orig_role->value;
-@@ -1141,9 +1141,9 @@
-     *p++ = 0;
+@@ -1148,9 +1148,9 @@
+     *orig_p++ = *p++ = 0;
  
      typdatum = symtab_search(&pol->p_types, scontextp);
--    orig_typdatum = symtab_search(&orig_pol->p_types, scontextp);
+-    orig_typdatum = symtab_search(&orig_pol->p_types, orig_scontextp);
      if (!typdatum || typdatum->attribute)
          goto out;
-+    orig_typdatum = symtab_search(&orig_pol->p_types, scontextp);
++    orig_typdatum = symtab_search(&orig_pol->p_types, orig_scontextp);
  
      ctx->type = typdatum->value;
      if (orig_typdatum && !orig_typdatum->attribute)
-@@ -1153,6 +1153,9 @@
+@@ -1158,6 +1158,9 @@
  
  #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0) || defined(KSU_COMPAT_HAS_STRICTER_MLS_CONTEXT_TO_SID)
      rc = mls_context_to_sid(pol, oldc, p, ctx, sidtabp, def_sid);
 +    if (rc)
 +        goto out;
 +
-     if (orig_valid) {
-         if (oldc) {
-             size_t offset = p - scontext;
-@@ -1176,6 +1179,8 @@
-             rc = -EINVAL;
-             goto out;
-         }
-+        if (rc)
-+            goto out;
- 
-         if (orig_valid) {
-             char *orig_p;
+     orig_rc = mls_context_to_sid(orig_pol, orig_oldc, orig_p, orig_ctx, orig_sidtabp, def_sid);
+ #else
+     rc = mls_context_to_sid(pol, oldc, &p, ctx, sidtabp, def_sid);
 -- 
 2.39.0

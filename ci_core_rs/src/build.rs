@@ -1023,6 +1023,14 @@ fn run_make_targets(
     }
 }
 
+fn last_nonempty_output_line(output: &str) -> Option<&str> {
+    output
+        .lines()
+        .rev()
+        .map(str::trim)
+        .find(|line| !line.is_empty())
+}
+
 fn capture_make_output(
     kernel_source_path: &Path,
     target: &str,
@@ -1030,17 +1038,18 @@ fn capture_make_output(
 ) -> Result<String> {
     let output = if source_setup_env {
         let cmd = format!(
-            "source ./_setup_env.sh 2>/dev/null || true && make {}",
+            "source ./_setup_env.sh 2>/dev/null || true && make -s {}",
             target
         );
         run_cmd(&["bash", "-c", &cmd], Some(kernel_source_path), true)?
     } else {
-        run_cmd(&["make", target], Some(kernel_source_path), true)?
+        run_cmd(&["make", "-s", target], Some(kernel_source_path), true)?
     };
 
     Ok(output
-        .unwrap_or_else(|| "unknown".to_string())
-        .trim()
+        .as_deref()
+        .and_then(last_nonempty_output_line)
+        .unwrap_or("unknown")
         .to_string())
 }
 
@@ -2030,6 +2039,12 @@ pub fn handle_collect_artifacts(artifact_dir: String) -> Result<()> {
 mod tests {
     use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn extracts_make_value_after_setup_diagnostics() {
+        let output = "Setting up build environment\nANDROID_BUILD_TOP=/src\n6.12.69\n";
+        assert_eq!(last_nonempty_output_line(output), Some("6.12.69"));
+    }
 
     #[test]
     fn rejects_unexpected_kernel_version() {

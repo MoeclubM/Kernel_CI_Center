@@ -421,11 +421,22 @@ fn build_project_matrix_entries(
     proj: &ProjectConfig,
 ) -> Vec<HashMap<String, String>> {
     let raw_supported = proj.supported_ksu.clone().unwrap_or_default();
-    let mut include = vec![HashMap::from([
-        ("project".to_string(), project_key.to_string()),
-        ("branch".to_string(), "main".to_string()),
-        ("ksu_variant".to_string(), "default".to_string()),
-    ])];
+    let supports_bakasu = raw_supported
+        .iter()
+        .any(|variant| normalize_variant_name(variant) == "bakasu");
+
+    // The un-suffixed `main` entry only exists for trees that still build their KSU
+    // variant in-tree. Every project in this fork builds from `bakasu`, and its `main`
+    // branch is the vendor tree without the manual-hook configuration, so scheduling that
+    // entry would guarantee a failed build.
+    let mut include = Vec::new();
+    if !supports_bakasu {
+        include.push(HashMap::from([
+            ("project".to_string(), project_key.to_string()),
+            ("branch".to_string(), "main".to_string()),
+            ("ksu_variant".to_string(), "default".to_string()),
+        ]));
+    }
 
     for variant in raw_supported {
         let normalized = normalize_variant_name(&variant);
@@ -443,6 +454,14 @@ fn build_project_matrix_entries(
             ])
         };
         include.push(entry);
+    }
+
+    if include.is_empty() {
+        include.push(HashMap::from([
+            ("project".to_string(), project_key.to_string()),
+            ("branch".to_string(), "main".to_string()),
+            ("ksu_variant".to_string(), "default".to_string()),
+        ]));
     }
 
     include
@@ -966,4 +985,53 @@ fn handle_update(
 
     fs::remove_dir_all(target_dir)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod matrix_tests {
+    use super::*;
+
+    fn project(supported: &[&str]) -> ProjectConfig {
+        ProjectConfig {
+            repo: "owner/kernel".to_string(),
+            defconfig: "defconfig".to_string(),
+            localversion_base: "-test".to_string(),
+            expected_kernel_version: None,
+            lto: None,
+            supported_ksu: Some(supported.iter().map(|value| value.to_string()).collect()),
+            toolchain_urls: None,
+            toolchain_sha256: None,
+            toolchain_path_prefix: None,
+            toolchain_path_exports: None,
+            anykernel_config: None,
+            zip_name_prefix: None,
+            version_method: None,
+            extra_host_env: None,
+            disable_security: None,
+            readme_placeholders: None,
+            susfs: None,
+            bbg: None,
+            watch_upstream_variants: None,
+            build_profile: None,
+            cross_compile: None,
+            external_modules: None,
+        }
+    }
+
+    #[test]
+    fn bakasu_projects_do_not_schedule_the_main_branch() {
+        let entries = build_project_matrix_entries("mi17_sm8850", &project(&["bakasu"]));
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["branch"], "bakasu");
+        assert_eq!(entries[0]["ksu_variant"], "default");
+    }
+
+    #[test]
+    fn projects_without_a_supported_variant_keep_the_main_entry() {
+        let entries = build_project_matrix_entries("legacy_soc", &project(&[]));
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["branch"], "main");
+    }
 }

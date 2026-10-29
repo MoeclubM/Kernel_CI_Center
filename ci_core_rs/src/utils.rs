@@ -165,13 +165,6 @@ pub fn save_json<T: serde::Serialize>(path: &Path, data: &T) -> Result<()> {
     Ok(())
 }
 
-/// Send one Telegram Bot API request and prove it was accepted.
-///
-/// The Bot API reports failures with HTTP 200 and a JSON body of
-/// `{"ok":false,"description":"..."}` -- an expired token, a wrong chat id, a bot
-/// muted in the channel or a 429 rate limit all look like a successful POST. The
-/// earlier code dropped the response entirely, so every one of those turned into a
-
 fn write_github_kv(var_name: &str, key: &str, value: &str) -> Result<()> {
     if let Ok(path) = env::var(var_name) {
         let mut file = OpenOptions::new().append(true).create(true).open(path)?;

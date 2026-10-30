@@ -10,6 +10,7 @@ on:
         type: choice
         options:
           - mi17_sm8850
+          - mi17_sm8850_nosu
           - uws6152_ums312
           - uws6152_cd12m
         default: 'mi17_sm8850'
